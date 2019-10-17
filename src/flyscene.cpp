@@ -185,7 +185,9 @@ bool Flyscene::isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eig
 
 	Eigen::Vector2f result = m.colPivHouseholderQr().solve((point - vertice1));
 
-	return (result.x() + result.y()) <= 1;
+	return (result.x() >= 0 && result.x() <= 1 && 
+		    result.y() >= 0 && result.y() <= 1 &&
+		   (result.x() + result.y()) <= 1);
 }
 
 
