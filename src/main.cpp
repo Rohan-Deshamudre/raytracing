@@ -86,6 +86,22 @@ static void cursorPosCallback(GLFWwindow *window, double xpos, double ypos) {
 }
 
 int main(int argc, char *argv[]) {
+
+	// Example::
+
+	Eigen::Vector3f norm = Eigen::Vector3f(1.0, 3.0, -2.0);
+	Eigen::Vector3f origin = Eigen::Vector3f(0.0, 1.0, 0.0);
+	Eigen::Vector3f direction = Eigen::Vector3f(0.0, -1.0, 2.0);
+	Eigen::Vector3f pp = Eigen::Vector3f(0.0, 0.0, -5.0);
+	Eigen::Vector3f result = Eigen::Vector3f(0.0, 0.0, 0.0);
+
+	bool isIntersecting = Flyscene::planeIntersection(origin, direction, norm, pp, result);
+
+	std::cout << isIntersecting << "\n";
+	float x = result.x(), y = result.y(), z = result.z();
+	
+	std::cout << x << " " << y << " " << z << "\n";
+
   GLFWwindow *main_window;
 
   if (!glfwInit()) {

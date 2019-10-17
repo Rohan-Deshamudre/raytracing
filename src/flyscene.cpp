@@ -158,6 +158,23 @@ void Flyscene::raytraceScene(int width, int height) {
   std::cout << "ray tracing done! " << std::endl;
 }
 
+bool Flyscene::planeIntersection(Eigen::Vector3f &origin, Eigen::Vector3f dir, Eigen::Vector3f norm, Eigen::Vector3f point, Eigen::Vector3f &intersect) {
+	Eigen::Vector3f normalizedNorm = norm.normalized();
+	float D = normalizedNorm.dot(point);
+
+	float t = (D - normalizedNorm.dot(origin));
+	float dd = dir.dot(normalizedNorm);
+
+	if (dd == 0) {
+		return false;
+	}
+	else {
+		intersect = origin + (t / dd) * dir;
+		return true;
+	}
+
+}
+
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                                    Eigen::Vector3f &dest) {
