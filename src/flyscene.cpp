@@ -172,7 +172,20 @@ bool Flyscene::planeIntersection(Eigen::Vector3f &origin, Eigen::Vector3f dir, E
 		intersect = origin + (t / dd) * dir;
 		return true;
 	}
+}
 
+bool Flyscene::isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eigen::Vector3f vertice2, Eigen::Vector3f vertice3) {
+	Eigen::Vector3f dirOne = vertice2 - vertice1;
+	Eigen::Vector3f dirTwo = vertice3 - vertice1;
+
+	Eigen::MatrixXf m(3, 2);
+	m << dirOne.x(), dirTwo.x(),
+		 dirOne.y(), dirTwo.y(), 
+		 dirOne.z(), dirTwo.z();
+
+	Eigen::Vector2f result = m.colPivHouseholderQr().solve((point - vertice1));
+
+	return (result.x() + result.y()) <= 1;
 }
 
 
