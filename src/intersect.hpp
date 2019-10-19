@@ -2,18 +2,19 @@
 
 namespace Intersect {
 
-bool plane(Eigen::Vector3f &origin, Eigen::Vector3f dir, Eigen::Vector3f norm,
-           Eigen::Vector3f point, Eigen::Vector3f &intersect) {
-  Eigen::Vector3f normalizedNorm = norm.normalized();
-  float D = normalizedNorm.dot(point);
+bool plane(Eigen::Vector3f rayOrigin, Eigen::Vector3f rayDirection,
+           Eigen::Vector3f planeNormal, Eigen::Vector3f planePoint,
+           Eigen::Vector3f &intersect) {
+  planeNormal = planeNormal.normalized();
+  float d = planeNormal.dot(planePoint);
 
-  float t = (D - normalizedNorm.dot(origin));
-  float dd = dir.dot(normalizedNorm);
+  float t = (d - planeNormal.dot(rayOrigin));
+  float dd = rayDirection.dot(planeNormal);
 
   if (dd == 0) {
     return false;
   } else {
-    intersect = origin + (t / dd) * dir;
+    intersect = rayOrigin + (t / dd) * rayDirection;
     return true;
   }
 }
