@@ -13,15 +13,12 @@ void Flyscene::initialize(int width, int height) {
   Tucano::MeshImporter::loadObjFile(mesh, materials,
                                     "resources/models/dodgeColorTest.obj");
 
-
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
 
   // pass all the materials to the Phong Shader
   for (int i = 0; i < materials.size(); ++i)
     phong.addMaterial(materials[i]);
-
-
 
   // set the color and size of the sphere to represent the light sources
   // same sphere is used for all sources
@@ -43,18 +40,18 @@ void Flyscene::initialize(int width, int height) {
   glEnable(GL_DEPTH_TEST);
 
   // for (int i = 0; i<mesh.getNumberOfFaces(); ++i){
-  //   Tucano::Face face = mesh.getFace(i);    
+  //   Tucano::Face face = mesh.getFace(i);
   //   for (int j =0; j<face.vertex_ids.size(); ++j){
   //     std::cout<<"vid "<<j<<" "<<face.vertex_ids[j]<<std::endl;
-  //     std::cout<<"vertex "<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl;
-  //     std::cout<<"normal "<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl;
+  //     std::cout<<"vertex
+  //     "<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl;
+  //     std::cout<<"normal
+  //     "<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl;
   //   }
   //   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl;
-  //   std::cout<<"face   normal "<<face.normal.transpose() << std::endl << std::endl;
+  //   std::cout<<"face   normal "<<face.normal.transpose() << std::endl <<
+  //   std::endl;
   // }
-
-
-
 }
 
 void Flyscene::paintGL(void) {
@@ -115,11 +112,11 @@ void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
 
   // direction from camera center to click position
   Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
-  
+
   // position and orient the cylinder representing the ray
   ray.setOriginOrientation(flycamera.getCenter(), dir);
 
-  // place the camera representation (frustum) on current camera location, 
+  // place the camera representation (frustum) on current camera location,
   camerarep.resetModelMatrix();
   camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
 }
@@ -158,38 +155,37 @@ void Flyscene::raytraceScene(int width, int height) {
   std::cout << "ray tracing done! " << std::endl;
 }
 
-bool Flyscene::planeIntersection(Eigen::Vector3f &origin, Eigen::Vector3f dir, Eigen::Vector3f norm, Eigen::Vector3f point, Eigen::Vector3f &intersect) {
-	Eigen::Vector3f normalizedNorm = norm.normalized();
-	float D = normalizedNorm.dot(point);
+bool Flyscene::planeIntersection(Eigen::Vector3f &origin, Eigen::Vector3f dir,
+                                 Eigen::Vector3f norm, Eigen::Vector3f point,
+                                 Eigen::Vector3f &intersect) {
+  Eigen::Vector3f normalizedNorm = norm.normalized();
+  float D = normalizedNorm.dot(point);
 
-	float t = (D - normalizedNorm.dot(origin));
-	float dd = dir.dot(normalizedNorm);
+  float t = (D - normalizedNorm.dot(origin));
+  float dd = dir.dot(normalizedNorm);
 
-	if (dd == 0) {
-		return false;
-	}
-	else {
-		intersect = origin + (t / dd) * dir;
-		return true;
-	}
+  if (dd == 0) {
+    return false;
+  } else {
+    intersect = origin + (t / dd) * dir;
+    return true;
+  }
 }
 
-bool Flyscene::isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eigen::Vector3f vertice2, Eigen::Vector3f vertice3) {
-	Eigen::Vector3f dirOne = vertice2 - vertice1;
-	Eigen::Vector3f dirTwo = vertice3 - vertice1;
+bool Flyscene::isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1,
+                            Eigen::Vector3f vertice2,
+                            Eigen::Vector3f vertice3) {
+  Eigen::Vector3f dirOne = vertice2 - vertice1;
+  Eigen::Vector3f dirTwo = vertice3 - vertice1;
 
-	Eigen::MatrixXf m(3, 2);
-	m << dirOne.x(), dirTwo.x(),
-		 dirOne.y(), dirTwo.y(), 
-		 dirOne.z(), dirTwo.z();
+  Eigen::MatrixXf m(3, 2);
+  m << dirOne.x(), dirTwo.x(), dirOne.y(), dirTwo.y(), dirOne.z(), dirTwo.z();
 
-	Eigen::Vector2f result = m.colPivHouseholderQr().solve((point - vertice1));
+  Eigen::Vector2f result = m.colPivHouseholderQr().solve((point - vertice1));
 
-	return (result.x() >= 0 && result.x() <= 1 && 
-		    result.y() >= 0 && result.y() <= 1 &&
-		   (result.x() + result.y()) <= 1);
+  return (result.x() >= 0 && result.x() <= 1 && result.y() >= 0 &&
+          result.y() <= 1 && (result.x() + result.y()) <= 1);
 }
-
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                                    Eigen::Vector3f &dest) {
