@@ -88,29 +88,6 @@ static void cursorPosCallback(GLFWwindow *window, double xpos, double ypos) {
 }
 
 int main(int argc, char *argv[]) {
-
-	// Plane interaction example
-	Eigen::Vector3f norm = Eigen::Vector3f(1.0, 3.0, -2.0);
-	Eigen::Vector3f origin = Eigen::Vector3f(0.0, 1.0, 0.0);
-	Eigen::Vector3f direction = Eigen::Vector3f(0.0, -1.0, 2.0);
-	Eigen::Vector3f pp = Eigen::Vector3f(0.0, 0.0, -5.0);
-	Eigen::Vector3f result = Eigen::Vector3f(0.0, 0.0, 0.0);
-
-	std::cout << Intersect::plane(origin, direction, norm, pp, result) << "\n";
-	float x = result.x(), y = result.y(), z = result.z();
-	
-	std::cout << x << " " << y << " " << z << "\n";
-	
-	// Point in triangle example
-	Eigen::Vector3f vertice1 = Eigen::Vector3f(0.0, 0.0, 0.0);
-	Eigen::Vector3f vertice2 = Eigen::Vector3f(20.0, 0.0, 0.0);
-	Eigen::Vector3f vertice3 = Eigen::Vector3f(10.0, 30.0, 0.0);
-
-	Eigen::Vector3f inPoint = Eigen::Vector3f(10.0, 15.0, 0.0);
-	Eigen::Vector3f outPoint = Eigen::Vector3f(30.0, 15.0, 0.0);
-
-	std::cout << ((Intersect::triangle(outPoint, vertice1, vertice2, vertice3)) ? ("Point in triangle") : ("Point not in triangle")) << std::endl;
-
   GLFWwindow *main_window;
 
   if (!glfwInit()) {
