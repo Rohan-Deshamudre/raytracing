@@ -1,6 +1,8 @@
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
 
+#include "intersect.hpp"
+
 void Flyscene::initialize(int width, int height) {
   // initiliaze the Phong Shading effect for the Opengl Previewer
   phong.initialize();
@@ -155,8 +157,23 @@ void Flyscene::raytraceScene(int width, int height) {
   std::cout << "ray tracing done! " << std::endl;
 }
 
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
-                                   Eigen::Vector3f &dest) {
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest) {
+
+  int numFaces = mesh.getNumberOfFaces();
+  for (int i = 0; i < numFaces; i++) {
+    Tucano::Face face = mesh.getFace(i);
+
+    // returns the actual jth vertex (xyzw) of the face
+    Eigen::Vector4f a = mesh.getVertex(face.vertex_ids[0]);
+    Eigen::Vector4f b = mesh.getVertex(face.vertex_ids[1]);
+    Eigen::Vector4f c = mesh.getVertex(face.vertex_ids[2]);
+
+    if (Intersect::triangle(origin, dest, a.head<3>(), b.head<3>(), c.head<3>()))
+      return Eigen::Vector3f(1.0f, 1.0f, 1.0f);
+  }
+
+  return Eigen::Vector3f(0.0f, 0.0f, 0.0f);
+
   // just some fake random color per pixel until you implement your ray tracing
   // remember to return your RGB values as floats in the range [0, 1]!!!
   return Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
