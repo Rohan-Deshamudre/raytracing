@@ -13,7 +13,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/dodgeColorTest.obj");
+                                    "resources/models/cube.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -158,17 +158,19 @@ void Flyscene::raytraceScene(int width, int height) {
 }
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest) {
+  Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
   int numFaces = mesh.getNumberOfFaces();
   for (int i = 0; i < numFaces; i++) {
     Tucano::Face face = mesh.getFace(i);
 
     // returns the actual jth vertex (xyzw) of the face
-    Eigen::Vector4f a = mesh.getVertex(face.vertex_ids[0]);
-    Eigen::Vector4f b = mesh.getVertex(face.vertex_ids[1]);
-    Eigen::Vector4f c = mesh.getVertex(face.vertex_ids[2]);
+    Eigen::Vector4f a = modelMatrix * mesh.getVertex(face.vertex_ids[0]);
+    Eigen::Vector4f b = modelMatrix * mesh.getVertex(face.vertex_ids[1]);
+    Eigen::Vector4f c = modelMatrix * mesh.getVertex(face.vertex_ids[2]);
 
-    if (Intersect::triangle(origin, dest, a.head<3>(), b.head<3>(), c.head<3>()))
+    Eigen::Vector3f intersect;
+    if (Intersect::triangle(origin, dest, a.head<3>(), b.head<3>(), c.head<3>(), intersect))
       return Eigen::Vector3f(1.0f, 1.0f, 1.0f);
   }
 
