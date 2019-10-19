@@ -19,18 +19,37 @@ bool plane(Eigen::Vector3f rayOrigin, Eigen::Vector3f rayDirection,
   }
 }
 
-bool triangle(Eigen::Vector3f point, Eigen::Vector3f vertice1,
-              Eigen::Vector3f vertice2, Eigen::Vector3f vertice3) {
-  Eigen::Vector3f dirOne = vertice2 - vertice1;
-  Eigen::Vector3f dirTwo = vertice3 - vertice1;
+bool triangle(Eigen::Vector3f rayOrigin, Eigen::Vector3f rayDirection,
+              Eigen::Vector3f a, Eigen::Vector3f b, Eigen::Vector3f c) {
+  Eigen::Vector3f ab = a - b;
+  Eigen::Vector3f ac = a - c;
 
-  Eigen::MatrixXf m(3, 2);
-  m << dirOne.x(), dirTwo.x(), dirOne.y(), dirTwo.y(), dirOne.z(), dirTwo.z();
+  Eigen::Vector3f planeNormal = ab.cross(ac);
 
-  Eigen::Vector2f result = m.colPivHouseholderQr().solve((point - vertice1));
+  Eigen::Vector3f trianglePlaneIntersect;
+  if (plane(rayOrigin, rayDirection, planeNormal, a, trianglePlaneIntersect)) {
+    // check if the trianglePlaneIntersect is inside the triangle
 
-  return (result.x() >= 0 && result.x() <= 1 && result.y() >= 0 &&
-          result.y() <= 1 && (result.x() + result.y()) <= 1);
+    Eigen::MatrixXf m(3, 2);
+    m << ab.x(), ac.x(), ab.y(), ac.y(), ab.z(), ac.z();
+
+    Eigen::Vector2f barycentric = m.colPivHouseholderQr().solve(trianglePlaneIntersect - a);
+
+    float alpha = barycentric.x();
+    float beta = barycentric.y();
+
+    if (alpha < 0)
+      return false;
+    else if (beta < 0)
+      return false;
+    else if (alpha + beta > 1)
+      return false;
+    else
+      return true;
+  }
+  else {
+    return false;
+  }
 }
 
 } // namespace Intersect
