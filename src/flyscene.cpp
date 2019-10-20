@@ -157,41 +157,46 @@ void Flyscene::raytraceScene(int width, int height) {
   std::cout << "ray tracing done! " << std::endl;
 }
 
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
+                                   Eigen::Vector3f &dest) {
+  // just some fake random color per pixel until you implement your ray tracing
+  // remember to return your RGB values as floats in the range [0, 1]!!!
+  // return Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
+  //                       rand() / (float)RAND_MAX);
 
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin,
-	Eigen::Vector3f& dest) {
-	// just some fake random color per pixel until you implement your ray tracing
-	// remember to return your RGB values as floats in the range [0, 1]!!!
-	//return Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
-	//                       rand() / (float)RAND_MAX);
+  int num_faces = mesh.getNumberOfFaces();
+  Eigen::Vector3f realDest = (dest - origin).normalized();
+  float minDist = (1 << 30);
+  Tucano::Face bestFace;
 
-	int num_faces = mesh.getNumberOfFaces();
-	Eigen::Vector3f realDest = (dest - origin).normalized();
-	float minDist = (1 << 30);
-	Tucano::Face bestFace;
+  for (int i = 0; i < num_faces; ++i) {
+    Tucano::Face currFace = mesh.getFace(i);
+    Eigen::Vector3f intersect = Eigen::Vector3f(0.0, 0.0, 0.0);
+    Eigen::Vector4f vert1 =
+        mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[0]);
+    Eigen::Vector4f vert2 =
+        mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[1]);
+    Eigen::Vector4f vert3 =
+        mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[2]);
 
-	for (int i = 0; i < num_faces; ++i) {
-		Tucano::Face currFace = mesh.getFace(i);
-		Eigen::Vector3f intersect = Eigen::Vector3f(0.0, 0.0, 0.0);
-		Eigen::Vector4f vert1 = mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[0]);
-		Eigen::Vector4f vert2 = mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[1]);
-		Eigen::Vector4f vert3 = mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[2]);
+    if (Intersect::triangle(origin, dest, vert1.head<3>() / vert1.w(),
+                            vert2.head<3>() / vert2.w(),
+                            vert3.head<3>() / vert3.w(), intersect)) {
+      Eigen::Vector3f forDist = intersect - dest;
+      float currDist =
+          sqrt(forDist.x() * forDist.x() + forDist.y() * forDist.y() +
+               forDist.z() * forDist.z());
 
-		if (Intersect::triangle(origin, dest, vert1.head<3>() / vert1.w(), vert2.head<3>() / vert2.w(), vert3.head<3>() / vert3.w(), intersect)) {
-			Eigen::Vector3f forDist = intersect - dest;
-			float currDist = sqrt(forDist.x() * forDist.x() + forDist.y() * forDist.y() + forDist.z() * forDist.z());
-			
-			if (currDist < minDist) {
-				minDist = currDist;
-				bestFace = currFace;
-			}
-		}
-	}
+      if (currDist < minDist) {
+        minDist = currDist;
+        bestFace = currFace;
+      }
+    }
+  }
 
-	if (minDist == (1 << 30)) {
-		return Eigen::Vector3f(1.0, 1.0, 1.0);
-	}
-	else {
-		return phong.getMaterial(bestFace.material_id).getDiffuse();
-	}
+  if (minDist == (1 << 30)) {
+    return Eigen::Vector3f(1.0, 1.0, 1.0);
+  } else {
+    return phong.getMaterial(bestFace.material_id).getDiffuse();
+  }
 }
