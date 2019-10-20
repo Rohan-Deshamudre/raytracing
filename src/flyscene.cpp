@@ -1,6 +1,8 @@
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
 
+#include <limits>
+
 #include "intersect.hpp"
 
 void Flyscene::initialize(int width, int height) {
@@ -159,44 +161,41 @@ void Flyscene::raytraceScene(int width, int height) {
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                                    Eigen::Vector3f &dest) {
-  // just some fake random color per pixel until you implement your ray tracing
-  // remember to return your RGB values as floats in the range [0, 1]!!!
-  // return Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
-  //                       rand() / (float)RAND_MAX);
+  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
 
+  Tucano::Face closestFace;
+  float minDist = std::numeric_limits<float>::max();
+
+  // Loop over all faces
   int num_faces = mesh.getNumberOfFaces();
-  Eigen::Vector3f realDest = (dest - origin).normalized();
-  float minDist = (1 << 30);
-  Tucano::Face bestFace;
-
   for (int i = 0; i < num_faces; ++i) {
-    Tucano::Face currFace = mesh.getFace(i);
-    Eigen::Vector3f intersect = Eigen::Vector3f(0.0, 0.0, 0.0);
-    Eigen::Vector4f vert1 =
-        mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[0]);
-    Eigen::Vector4f vert2 =
-        mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[1]);
-    Eigen::Vector4f vert3 =
-        mesh.getShapeModelMatrix() * mesh.getVertex(currFace.vertex_ids[2]);
+    Tucano::Face face = mesh.getFace(i);
 
-    if (Intersect::triangle(origin, dest, vert1.head<3>() / vert1.w(),
+    // Assume a triangle
+    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
+    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
+    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
+
+    // Intersect + set calculate distance
+    Eigen::Vector3f intersect;
+    if (Intersect::triangle(origin, dest,
+                            vert1.head<3>() / vert1.w(),
                             vert2.head<3>() / vert2.w(),
-                            vert3.head<3>() / vert3.w(), intersect)) {
-      Eigen::Vector3f forDist = intersect - dest;
-      float currDist =
-          sqrt(forDist.x() * forDist.x() + forDist.y() * forDist.y() +
-               forDist.z() * forDist.z());
-
-      if (currDist < minDist) {
-        minDist = currDist;
-        bestFace = currFace;
+                            vert3.head<3>() / vert3.w(),
+                            intersect))
+    {
+      Eigen::Vector3f distVector = intersect - origin;
+      float dist = sqrt(distVector.dot(distVector));
+      if (dist < minDist) {
+        minDist = dist;
+        closestFace = face;
       }
     }
   }
 
-  if (minDist == (1 << 30)) {
+  if (minDist >= std::numeric_limits<float>::max()) {
     return Eigen::Vector3f(1.0, 1.0, 1.0);
   } else {
-    return phong.getMaterial(bestFace.material_id).getDiffuse();
+    return phong.getMaterial(closestFace.material_id).getDiffuse();
   }
 }
