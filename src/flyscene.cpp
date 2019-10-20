@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 
 #include <limits>
+#include <thread>
 
 #include "intersect.hpp"
 
@@ -140,17 +141,35 @@ void Flyscene::raytraceScene(int width, int height) {
   for (int i = 0; i < image_size[1]; ++i)
     pixel_data[i].resize(image_size[0]);
 
-  // origin of the ray is always the camera center
-  Eigen::Vector3f origin = flycamera.getCenter();
-  Eigen::Vector3f screen_coords;
+  // check number of supported concurrent threads
+  unsigned int threads = std::thread::hardware_concurrency();
+  std::cout << threads << " concurrent threads are supported.\n";
 
-  // for every pixel shoot a ray from the origin through the pixel coords
-  for (int j = 0; j < image_size[1]; ++j) {
-    for (int i = 0; i < image_size[0]; ++i) {
-      // create a ray from the camera passing through the pixel (i,j)
-      screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
-      // launch raytracing for the given ray and write result to pixel data
-      pixel_data[i][j] = traceRay(origin, screen_coords);
+  if (threads == 0) {
+    // threading not supported
+    std::cout << "Using single thread." << std::endl;
+    raytracePartScene(pixel_data, image_size[1], image_size[0], 0, image_size[1]);
+  }
+  else {
+    // multithread for maximal power levels (over 9000!)
+    std::cout << "Using " << threads << " threads." << std::endl;
+
+    // split over threads
+    std::vector<std::thread> workers(threads);
+    for (int i = 0; i < threads; i++) {
+      int x_start = i * (image_size[1] / threads);
+      int x_end =  x_start + (image_size[1] / threads);
+
+      std::cout << "Starting thread " << i << " of " << threads << std::endl;
+      workers[i] =
+          std::thread(&Flyscene::raytracePartScene, this, std::ref(pixel_data),
+                      image_size[1], image_size[0], x_start, x_end);
+    }
+
+    // wait for threads to finish
+    for (auto& t : workers) {
+      t.join();
+      std::cout << "Thread finished." << std::endl;
     }
   }
 
@@ -159,12 +178,30 @@ void Flyscene::raytraceScene(int width, int height) {
   std::cout << "ray tracing done! " << std::endl;
 }
 
+void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>>& pixel_data,
+                                 int width, int height,
+                                 int x_start, int x_end) {
+  // origin of the ray is always the camera center
+  Eigen::Vector3f origin = flycamera.getCenter();
+  Eigen::Vector3f screen_coords;
+
+  // for every pixel shoot a ray from the origin through the pixel coords
+  for (int j = x_start; j < x_end; ++j) {
+    for (int i = 0; i < height; ++i) {
+      // create a ray from the camera passing through the pixel (i,j)
+      screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
+      // launch raytracing for the given ray and write result to pixel data
+      pixel_data[i][j] = traceRay(origin, screen_coords);
+    }
+  }
+}
+
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                                    Eigen::Vector3f &dest) {
-  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
-
   Tucano::Face closestFace;
   float minDist = std::numeric_limits<float>::max();
+
+  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
 
   // Loop over all faces
   int num_faces = mesh.getNumberOfFaces();

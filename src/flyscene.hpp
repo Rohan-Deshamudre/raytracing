@@ -57,9 +57,17 @@ public:
   void createDebugRay(const Eigen::Vector2f &mouse_pos);
 
   /**
-   * @brief raytrace your scene from current camera position   
+   * @brief raytrace your scene from current camera position
+   * @see   raytracePartScene
    */
   void raytraceScene(int width = 0, int height = 0);
+
+  /**
+   * @brief raytrace part of your scene from current camera position
+   */
+  void raytracePartScene(vector<vector<Eigen::Vector3f>>& pixel_data,
+                         int width = 0, int height = 0,
+                         int x_start = 0, int x_end = 0);
 
   /**
    * @brief trace a single ray from the camera passing through dest
@@ -69,13 +77,7 @@ public:
    */
   Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
 
-  static bool planeIntersection(Eigen::Vector3f& origin, Eigen::Vector3f dir, Eigen::Vector3f norm, Eigen::Vector3f point, Eigen::Vector3f& intersect);
-
-  static bool isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eigen::Vector3f vertice2, Eigen::Vector3f vertice3);
-
-
 private:
-
   // A simple phong shader for rendering meshes
   Tucano::Effects::PhongMaterial phong;
 
