@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/dodgeColorTest.obj");
+                                    "resources/models/cube.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -198,10 +198,15 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>>& pixel_data,
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                                    Eigen::Vector3f &dest) {
+  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+  Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
+  Eigen::Vector3f rayDirection = (dest - origin).normalized();
+
   Tucano::Face closestFace;
+  Eigen::Vector3f closestIntersect;
   float minDist = std::numeric_limits<float>::max();
 
-  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+  Eigen::Vector3f intersect;
 
   // Loop over all faces
   int num_faces = mesh.getNumberOfFaces();
@@ -214,7 +219,6 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
 
     // Intersect + set calculate distance
-    Eigen::Vector3f intersect;
     if (Intersect::triangle(origin, dest,
                             vert1.head<3>() / vert1.w(),
                             vert2.head<3>() / vert2.w(),
@@ -222,18 +226,37 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                             intersect))
     {
       Eigen::Vector3f distVector = intersect - origin;
-      float dist = sqrt(distVector.dot(distVector));
+      float dist = distVector.norm();
       if (dist < minDist) {
         minDist = dist;
         closestFace = face;
+        closestIntersect = intersect;
       }
     }
   }
 
   if (minDist >= std::numeric_limits<float>::max()) {
     // no intersection
-    return Eigen::Vector3f(1.0f, 1.0f, 1.0f);
-  } else {
-    return materials[closestFace.material_id].getDiffuse();
+    return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
+  }
+  else {
+    auto material = materials[closestFace.material_id];
+    Eigen::Vector3f kd = material.getDiffuse();
+
+    Eigen::Vector3f surfaceNormal = normalMatrix * closestFace.normal;
+    surfaceNormal = surfaceNormal.normalized();
+
+    // calculate diffuse color
+    Eigen::Vector3f diffuse = Eigen::Vector3f(0.0, 0.0, 0.0);
+
+    for (auto light : lights) {
+      Eigen::Vector3f toLight = light - closestIntersect;
+      Eigen::Vector3f toLightUnit = toLight.normalized();
+      float lightDistance = toLight.norm();
+      diffuse += M_PI * 0.5f * kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) /
+                 lightDistance;
+    }
+
+    return diffuse;
   }
 }
