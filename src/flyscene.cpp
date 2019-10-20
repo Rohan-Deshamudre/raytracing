@@ -148,9 +148,9 @@ void Flyscene::raytraceScene(int width, int height) {
   if (threads == 0) {
     // threading not supported
     std::cout << "Using single thread." << std::endl;
-    raytracePartScene(pixel_data, image_size[1], image_size[0], 0, image_size[1]);
-  }
-  else {
+    raytracePartScene(pixel_data, image_size[1], image_size[0], 0,
+                      image_size[1]);
+  } else {
     // multithread for maximal power levels (over 9000!)
     std::cout << "Using " << threads << " threads." << std::endl;
 
@@ -158,7 +158,7 @@ void Flyscene::raytraceScene(int width, int height) {
     std::vector<std::thread> workers(threads);
     for (int i = 0; i < threads; i++) {
       int x_start = i * (image_size[1] / threads);
-      int x_end =  x_start + (image_size[1] / threads);
+      int x_end = x_start + (image_size[1] / threads);
 
       std::cout << "Starting thread " << i << " of " << threads << std::endl;
       workers[i] =
@@ -167,7 +167,7 @@ void Flyscene::raytraceScene(int width, int height) {
     }
 
     // wait for threads to finish
-    for (auto& t : workers) {
+    for (auto &t : workers) {
       t.join();
       std::cout << "Thread finished." << std::endl;
     }
@@ -178,9 +178,9 @@ void Flyscene::raytraceScene(int width, int height) {
   std::cout << "ray tracing done! " << std::endl;
 }
 
-void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>>& pixel_data,
-                                 int width, int height,
-                                 int x_start, int x_end) {
+void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
+                                 int width, int height, int x_start,
+                                 int x_end) {
   // origin of the ray is always the camera center
   Eigen::Vector3f origin = flycamera.getCenter();
   Eigen::Vector3f screen_coords;
@@ -219,12 +219,9 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
 
     // Intersect + set calculate distance
-    if (Intersect::triangle(origin, dest,
-                            vert1.head<3>() / vert1.w(),
+    if (Intersect::triangle(origin, dest, vert1.head<3>() / vert1.w(),
                             vert2.head<3>() / vert2.w(),
-                            vert3.head<3>() / vert3.w(),
-                            intersect))
-    {
+                            vert3.head<3>() / vert3.w(), intersect)) {
       Eigen::Vector3f distVector = intersect - origin;
       float dist = distVector.norm();
       if (dist < minDist) {
@@ -238,8 +235,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
   if (minDist >= std::numeric_limits<float>::max()) {
     // no intersection
     return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
-  }
-  else {
+  } else {
     auto material = materials[closestFace.material_id];
     Eigen::Vector3f kd = material.getDiffuse();
 
@@ -253,8 +249,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
       Eigen::Vector3f toLight = light - closestIntersect;
       Eigen::Vector3f toLightUnit = toLight.normalized();
       float lightDistance = toLight.norm();
-      diffuse += M_PI * 0.5f * kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) /
-                 lightDistance;
+      diffuse += M_PI * 0.5f * kd *
+                 std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
     }
 
     return diffuse;
