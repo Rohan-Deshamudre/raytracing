@@ -11,6 +11,33 @@ Eigen::Vector3f reflect(const Eigen::Vector3f& v, const Eigen::Vector3f& n) {
     return v - 2*v.dot(n)*n;
 }
 
+Eigen::Vector3f
+interpolateNormal(const Eigen::Vector3f &nx, const Eigen::Vector3f &ny,
+                  const Eigen::Vector3f &nz, const Eigen::Vector3f &px,
+                  const Eigen::Vector3f &py, const Eigen::Vector3f &pz,
+                  const Eigen::Vector3f &p) {
+  using namespace Eigen;
+
+  Vector3f u = py - px;
+  Vector3f v = pz - px;
+
+  // barycentric
+  float uu, uv, vv, wu, wv, D;
+  uu = u.dot(u);
+  uv = u.dot(v);
+  vv = v.dot(v);
+  Vector3f w = p - px;
+  wu = w.dot(u);
+  wv = w.dot(v);
+  D = uv * uv - uu * vv;
+
+  float x, y;
+  x = (uv * wv - vv * wu) / D;
+  y = (uv * wu - uu * wv) / D;
+
+  return x * nx + y * ny + (1.f - x - y) * nz;
+}
+
 void Flyscene::initialize(int width, int height) {
   // initiliaze the Phong Shading effect for the Opengl Previewer
   phong.initialize();
@@ -257,9 +284,15 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
       Eigen::Vector3f raw = traceRay(origin, screen_coords);
-      // gamma 2 correction
-      pixel_data[i][j] =
+      if (raw(0) > 0.f && raw(0) < 1.f && raw(1) > 0.f && raw(1) < 1.f &&
+          raw(2) > 0.f && raw(2) < 1.f) {
+        // gamma 2 correction
+        pixel_data[i][j] =
           Eigen::Vector3f(sqrt(raw(0)), sqrt(raw(1)), sqrt(raw(2)));
+      }
+      else {
+        pixel_data[i][j] = Eigen::Vector3f(0.0, 0.0, 0.0);
+      }
     }
   }
 }
@@ -306,7 +339,20 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector3f ks = material.getSpecular();
     float shininess = material.getShininess();
 
-    Eigen::Vector3f surfaceNormal = normalMatrix * closestFace.normal;
+    // Interpolate normal
+    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[0]);
+    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[1]);
+    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[2]);
+
+    Eigen::Vector3f surfaceNormal = interpolateNormal(
+      normalMatrix * mesh.getNormal(closestFace.vertex_ids[0]),
+      normalMatrix * mesh.getNormal(closestFace.vertex_ids[1]),
+      normalMatrix * mesh.getNormal(closestFace.vertex_ids[2]),
+      vert1.head<3>() / vert1.w(),
+      vert2.head<3>() / vert2.w(),
+      vert3.head<3>() / vert3.w(),
+      closestIntersect
+    );
     surfaceNormal = surfaceNormal.normalized();
 
     // calculate diffuse + specular illumination
