@@ -6,6 +6,11 @@
 
 #include "intersect.hpp"
 
+// Reflect ray according to normal
+Eigen::Vector3f reflect(const Eigen::Vector3f& v, const Eigen::Vector3f& n) {
+    return v - 2*v.dot(n)*n;
+}
+
 void Flyscene::initialize(int width, int height) {
   // initiliaze the Phong Shading effect for the Opengl Previewer
   phong.initialize();
@@ -16,7 +21,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/cube.obj");
+                                    "resources/models/dodgeColorTest.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -235,27 +240,35 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     }
   }
 
-  if (minDist >= std::numeric_limits<float>::max()) {
-    // no intersection
-    return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
-  } else {
+  if (minDist < std::numeric_limits<float>::max()) {
     auto material = materials[closestFace.material_id];
     Eigen::Vector3f kd = material.getDiffuse();
+    Eigen::Vector3f ks = material.getSpecular();
+    float shininess = material.getShininess();
 
     Eigen::Vector3f surfaceNormal = normalMatrix * closestFace.normal;
     surfaceNormal = surfaceNormal.normalized();
 
-    // calculate diffuse color
+    // calculate diffuse + specular illumination
     Eigen::Vector3f diffuse = Eigen::Vector3f(0.0, 0.0, 0.0);
+    Eigen::Vector3f specular = Eigen::Vector3f(0.0, 0.0, 0.0);
 
     for (auto light : lights) {
       Eigen::Vector3f toLight = light - closestIntersect;
       Eigen::Vector3f toLightUnit = toLight.normalized();
       float lightDistance = toLight.norm();
-      diffuse += kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) /
-                 (lightDistance * lightDistance * lightDistance);
+      Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
+
+      diffuse +=
+          kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
+      specular +=
+          ks * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
     }
 
-    return diffuse;
+    return diffuse + specular;
   }
+
+  // no intersection
+  return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
 }
+
