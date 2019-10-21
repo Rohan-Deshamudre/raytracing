@@ -191,7 +191,10 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
-      pixel_data[i][j] = traceRay(origin, screen_coords);
+      Eigen::Vector3f raw = traceRay(origin, screen_coords);
+      // gamma 2 correction
+      pixel_data[i][j] =
+          Eigen::Vector3f(sqrt(raw(0)), sqrt(raw(1)), sqrt(raw(2)));
     }
   }
 }
@@ -249,8 +252,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
       Eigen::Vector3f toLight = light - closestIntersect;
       Eigen::Vector3f toLightUnit = toLight.normalized();
       float lightDistance = toLight.norm();
-      diffuse += M_PI * 0.5f * kd *
-                 std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
+      diffuse += kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) /
+                 (lightDistance * lightDistance * lightDistance);
     }
 
     return diffuse;
