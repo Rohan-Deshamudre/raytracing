@@ -36,9 +36,6 @@ void Flyscene::initialize(int width, int height) {
   // scale the camera representation (frustum) for the ray debug
   camerarep.shapeMatrix()->scale(0.2);
 
-  // the debug ray is a cylinder, set the radius and length of the cylinder
-  ray.setSize(0.005, 10.0);
-
   // craete a first debug ray pointing at the center of the screen
   createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 
@@ -77,7 +74,11 @@ void Flyscene::paintGL(void) {
   phong.render(mesh, flycamera, scene_light);
 
   // render the ray and camera representation for ray debug
-  ray.render(flycamera, scene_light);
+  for (std::vector<Tucano::Shapes::Cylinder>::iterator it = debugRays.begin(); it != debugRays.end(); ++it) {
+	  Tucano::Shapes::Cylinder temp = *it;
+	  temp.render(flycamera, scene_light);
+  }
+
   camerarep.render(flycamera, scene_light);
 
   // render ray tracing light sources as yellow spheres
@@ -110,20 +111,79 @@ void Flyscene::simulate(GLFWwindow *window) {
   flycamera.translate(dx, dy, dz);
 }
 
+
+
+void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to, int maxReflections) {
+
+	std::cout << "Reflection: " << maxReflections << std::endl;
+
+	Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+	Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
+	Eigen::Vector3f rayDirection = (to-from).normalized();
+
+	Tucano::Face closestFace;
+	Eigen::Vector3f closestIntersect;
+	float minDist = std::numeric_limits<float>::max();
+
+	Eigen::Vector3f intersect;
+
+	// Loop over all faces
+	int num_faces = mesh.getNumberOfFaces();
+	for (int i = 0; i < num_faces; ++i) {
+		Tucano::Face face = mesh.getFace(i);
+
+		// Assume a triangle
+		Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
+		Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
+		Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
+
+		// Intersect + set calculate distance
+		if (Intersect::triangle(from, to, vert1.head<3>() / vert1.w(),
+			vert2.head<3>() / vert2.w(),
+			vert3.head<3>() / vert3.w(), intersect)) {
+			Eigen::Vector3f distVector = intersect - from;
+			float dist = distVector.norm();
+			if (dist < minDist) {
+				minDist = dist;
+				closestFace = face;
+				closestIntersect = intersect;
+			}
+		}
+	}
+	
+	if (minDist < std::numeric_limits<float>::max()) {
+		//intersection
+		std::cout << "Drawing reflection" << std::endl;
+		//calculating reflection
+		float temp = 2 * (rayDirection.dot(closestFace.normal));
+		Eigen::Vector3f tVec = temp * closestFace.normal;
+		Eigen::Vector3f reflectDir = Eigen::Vector3f(rayDirection.x() - tVec.x(), rayDirection.y() - tVec.y(), rayDirection.z() - tVec.z());
+		Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.1, minDist, 16, 64);
+		ray.setSize(0.005, 10.0);
+		ray.resetModelMatrix();
+		ray.setOriginOrientation(from, rayDirection);
+		debugRays.push_back(ray);
+		if (maxReflections > 0) {
+			traceDebugRay(closestIntersect, closestIntersect + reflectDir, maxReflections - 1);
+		}
+	}
+}
+
 void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
-  ray.resetModelMatrix();
-  // from pixel position to world coordinates
-  Eigen::Vector3f screen_pos = flycamera.screenToWorld(mouse_pos);
+	debugRays.clear();
+	
+	// from pixel position to world coordinates
+	Eigen::Vector3f screen_pos = flycamera.screenToWorld(mouse_pos);
 
-  // direction from camera center to click position
-  Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
+	// direction from camera center to click position
+	Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
 
-  // position and orient the cylinder representing the ray
-  ray.setOriginOrientation(flycamera.getCenter(), dir);
+	// position and orient the cylinder representing the ray
+	traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 3);
 
-  // place the camera representation (frustum) on current camera location,
-  camerarep.resetModelMatrix();
-  camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
+	// place the camera representation (frustum) on current camera location,
+	camerarep.resetModelMatrix();
+	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
 }
 
 void Flyscene::raytraceScene(int width, int height) {
