@@ -3,39 +3,59 @@
 
 #include <limits>
 #include <thread>
+#include <algorithm>
 
 #include "intersect.hpp"
+
+float clamp(float v, float min, float max) {
+  if (v < min)
+    return min;
+  if (v > max)
+    return max;
+  return v;
+}
 
 // Reflect ray according to normal
 Eigen::Vector3f reflect(const Eigen::Vector3f& v, const Eigen::Vector3f& n) {
     return v - 2*v.dot(n)*n;
 }
 
-Eigen::Vector3f
-interpolateNormal(const Eigen::Vector3f &nx, const Eigen::Vector3f &ny,
-                  const Eigen::Vector3f &nz, const Eigen::Vector3f &px,
-                  const Eigen::Vector3f &py, const Eigen::Vector3f &pz,
-                  const Eigen::Vector3f &p) {
+Eigen::Vector2f calculateBarycentric(const Eigen::Vector3f &a,
+                            const Eigen::Vector3f &b,
+                            const Eigen::Vector3f &c,
+                            const Eigen::Vector3f &p) {
   using namespace Eigen;
 
-  Vector3f u = py - px;
-  Vector3f v = pz - px;
+  Vector3f u = b - a;
+  Vector3f v = c - a;
+  Vector3f w = p - a;
 
-  // barycentric
   float uu, uv, vv, wu, wv, D;
   uu = u.dot(u);
   uv = u.dot(v);
   vv = v.dot(v);
-  Vector3f w = p - px;
+
   wu = w.dot(u);
   wv = w.dot(v);
+
   D = uv * uv - uu * vv;
 
   float x, y;
   x = (uv * wv - vv * wu) / D;
   y = (uv * wu - uu * wv) / D;
 
-  return x * nx + y * ny + (1.f - x - y) * nz;
+  return Vector2f(x, y);
+}
+
+Eigen::Vector3f interpolate(const Eigen::Vector3f &nx,
+                            const Eigen::Vector3f &ny,
+                            const Eigen::Vector3f &nz,
+                            const Eigen::Vector2f &barycentric) {
+  float x, y;
+  x = barycentric(0);
+  y = barycentric(1);
+
+  return x * ny + y * nz + (1.f - x - y) * nx;
 }
 
 void Flyscene::initialize(int width, int height) {
@@ -73,19 +93,17 @@ void Flyscene::initialize(int width, int height) {
 
   glEnable(GL_DEPTH_TEST);
 
-  // for (int i = 0; i<mesh.getNumberOfFaces(); ++i){
-  //   Tucano::Face face = mesh.getFace(i);
-  //   for (int j =0; j<face.vertex_ids.size(); ++j){
-  //     std::cout<<"vid "<<j<<" "<<face.vertex_ids[j]<<std::endl;
-  //     std::cout<<"vertex
-  //     "<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl;
-  //     std::cout<<"normal
-  //     "<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl;
-  //   }
-  //   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl;
-  //   std::cout<<"face   normal "<<face.normal.transpose() << std::endl <<
-  //   std::endl;
-  // }
+  /* for (int i = 0; i<mesh.getNumberOfFaces(); ++i){ */
+  /*   Tucano::Face face = mesh.getFace(i); */
+  /*   for (int j =0; j<face.vertex_ids.size(); ++j){ */
+  /*     std::cout<<"vid "<<j<<" "<<face.vertex_ids[j]<<std::endl; */
+  /*     std::cout<<"vertex"<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl; */
+  /*     std::cout<<"normal"<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl; */
+  /*   } */
+  /*   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl; */
+  /*   std::cout<<"face normal "<<face.normal.transpose() << std::endl << */
+  /*   std::endl; */
+  /* } */
 }
 
 void Flyscene::paintGL(void) {
@@ -284,15 +302,14 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
       Eigen::Vector3f raw = traceRay(origin, screen_coords);
-      if (raw(0) > 0.f && raw(0) < 1.f && raw(1) > 0.f && raw(1) < 1.f &&
-          raw(2) > 0.f && raw(2) < 1.f) {
-        // gamma 2 correction
-        pixel_data[i][j] =
-          Eigen::Vector3f(sqrt(raw(0)), sqrt(raw(1)), sqrt(raw(2)));
-      }
-      else {
-        pixel_data[i][j] = Eigen::Vector3f(0.0, 0.0, 0.0);
-      }
+
+      // gamma 2 correction
+      pixel_data[i][j] =
+        Eigen::Vector3f(
+          sqrt(clamp(raw(0), 0.f, 1.f)),
+          sqrt(clamp(raw(1), 0.f, 1.f)),
+          sqrt(clamp(raw(2), 0.f, 1.f))
+        );
     }
   }
 }
@@ -343,17 +360,20 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[0]);
     Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[1]);
     Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[2]);
-
-    Eigen::Vector3f surfaceNormal = interpolateNormal(
-      normalMatrix * mesh.getNormal(closestFace.vertex_ids[0]),
-      normalMatrix * mesh.getNormal(closestFace.vertex_ids[1]),
-      normalMatrix * mesh.getNormal(closestFace.vertex_ids[2]),
+    Eigen::Vector2f barycentric = calculateBarycentric(
       vert1.head<3>() / vert1.w(),
       vert2.head<3>() / vert2.w(),
       vert3.head<3>() / vert3.w(),
       closestIntersect
     );
-    surfaceNormal = surfaceNormal.normalized();
+
+    Eigen::Vector3f surfaceNormal = interpolate(
+      mesh.getNormal(closestFace.vertex_ids[0]).normalized(),
+      mesh.getNormal(closestFace.vertex_ids[1]).normalized(),
+      mesh.getNormal(closestFace.vertex_ids[2]).normalized(),
+      barycentric
+    );
+    surfaceNormal = (normalMatrix * surfaceNormal.normalized()).normalized();
 
     // calculate diffuse + specular illumination
     Eigen::Vector3f diffuse = Eigen::Vector3f(0.0, 0.0, 0.0);
