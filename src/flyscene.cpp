@@ -200,23 +200,32 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to, int maxRe
 			}
 		}
 	}
-	
 	if (minDist < std::numeric_limits<float>::max()) {
 		//intersection
-		std::cout << "Drawing reflection" << std::endl;
+		
 		//calculating reflection
-		float temp = 2 * (rayDirection.dot(closestFace.normal));
-		Eigen::Vector3f tVec = temp * closestFace.normal;
-		Eigen::Vector3f reflectDir = Eigen::Vector3f(rayDirection.x() - tVec.x(), rayDirection.y() - tVec.y(), rayDirection.z() - tVec.z());
-		Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.1, minDist, 16, 64);
-		ray.setSize(0.005, 10.0);
+		Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace.normal);
+		float length = 3; //should be minDist
+		Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.01, length, 16, 64);
+		std::cout << minDist << std::endl;
 		ray.resetModelMatrix();
 		ray.setOriginOrientation(from, rayDirection);
 		debugRays.push_back(ray);
-		if (maxReflections > 0) {
+		if (maxReflections > 1) {
 			traceDebugRay(closestIntersect, closestIntersect + reflectDir, maxReflections - 1);
 		}
+		else {
+			//should draw most recent ray
+		}
 	}
+	else {
+		//no intersection
+		Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.01, 42, 16, 64);
+		ray.resetModelMatrix();
+		ray.setOriginOrientation(from, rayDirection);
+		debugRays.push_back(ray);
+	}
+	
 }
 
 void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
@@ -229,7 +238,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
 	Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
 
 	// position and orient the cylinder representing the ray
-	traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 3);
+	traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 2);
 
 	// place the camera representation (frustum) on current camera location,
 	camerarep.resetModelMatrix();
