@@ -394,54 +394,14 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
       float lightDistance = toLight.norm();
       Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
 
-<<<<<<< HEAD
-      diffuse +=
-          (kd * std::max(0.f, surfaceNormal.dot(toLightUnit))).cwiseProduct(lightColour / lightDistance);
-      specular +=
-          (ks * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess)).cwiseProduct(lightColour);
-=======
-      // check hard shadow
-      minDist = std::numeric_limits<float>::max();
-      Eigen::Vector3f impactPoint = intersect;
 
-      for (int i = 0; i < num_faces; ++i) {
-        Tucano::Face face = mesh.getFace(i);
-
-        // Assume a triangle
-        Eigen::Vector4f vert1 =
-            shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-        Eigen::Vector4f vert2 =
-            shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-        Eigen::Vector4f vert3 =
-            shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
-
-        // Intersect + set calculate distance
-        if (Intersect::triangle(impactPoint, impactPoint + toLightUnit,
-                                vert1.head<3>() / vert1.w(),
-                                vert2.head<3>() / vert2.w(),
-                                vert3.head<3>() / vert3.w(), intersect)) {
-          Eigen::Vector3f distVector = intersect - impactPoint;
-          float dist = distVector.norm();
-          // check if closer and in the correct halfspace
-          if (dist < minDist &&
-              distVector.dot(impactPoint + toLightUnit) > 0.f) {
-            minDist = dist;
-
-            // Only need to know that such an intersect exists
-            /* return Eigen::Vector3f(1.0, 0.0, 0.0); */
-            break;
-          }
-        }
-      }
 
       // if no hit on ray back to light -> illuminated
-      if (minDist >= std::numeric_limits<float>::max()) {
         diffuse +=
-            kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
+            kd.cwiseProduct(lightColour) * std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
         specular +=
-            ks * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
-      }
->>>>>>> b806fa48759e09f9816b21cbbc35f4cb4ff464fb
+            ks.cwiseProduct(lightColour) * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
+
     }
 
     /* return Eigen::Vector3f(0.0, 0.0, 1.0); */
@@ -451,11 +411,11 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
   // no intersection
   return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
 }
-<<<<<<< HEAD
+
 
 
 bool Flyscene::lightBlocked(Eigen::Vector3f intersect, Eigen::Vector3f lightLoc) {
-	Eigen::Vector3f dir = lightLoc - intersect;
+	Eigen::Vector3f is;
 	int num_faces = mesh.getNumberOfFaces();
 	Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
 	for (int i = 0; i < num_faces; ++i) {
@@ -469,11 +429,10 @@ bool Flyscene::lightBlocked(Eigen::Vector3f intersect, Eigen::Vector3f lightLoc)
 		// Intersect
 		if (Intersect::triangle(intersect, lightLoc, vert1.head<3>() / vert1.w(),
 			vert2.head<3>() / vert2.w(),
-			vert3.head<3>() / vert3.w(), intersect)) {
+			vert3.head<3>() / vert3.w(), is)) {
 			return true;
 		}
 	}
 	return false;
 }
-=======
->>>>>>> b806fa48759e09f9816b21cbbc35f4cb4ff464fb
+
