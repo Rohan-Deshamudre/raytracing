@@ -58,4 +58,54 @@ inline bool triangle(Vector3f rayOrigin, Vector3f rayPoint,
   }
 }
 
+inline bool Box(const Vector3f &origin,const Vector3f &direction, Vector3f Bmin, Vector3f Bmax) {
+	
+	float xmin = (Bmin.x() - origin.x()) / direction.x();
+	float xmax = (Bmax.x() - origin.x()) / direction.x();
+
+	if (xmin > xmax) {
+		swap(xmin, xmax);
+	}
+
+	float ymin = (Bmin.y() - origin.y()) / direction.y();
+	float ymax = (Bmax.y() - origin.y()) / direction.y();
+
+	if (ymin > ymax) {
+		swap(ymin, ymax);
+	}
+
+	if ((xmin > ymax) || (ymin > xmax)) {
+		return false;
+	}
+
+	if (ymin > xmin) {
+		xmin = ymin;
+	}	
+
+	if (ymax < xmax) {
+		xmax = ymax;
+	}		
+
+	float zmin = (Bmin.z() - origin.z()) / direction.z();
+	float zmax = (Bmax.z() - origin.z()) / direction.z();
+
+	if (zmin > zmax) {
+		swap(zmin, zmax);
+	}
+
+	if ((xmin > zmax) || (zmin > xmax)) {
+		return false;
+	}
+
+	if (zmin > xmin){
+		xmin = zmin;
+	}
+
+	if (zmax < xmax) {
+		xmax = zmax;
+	}
+
+	return true;	
+
+}
 } // namespace Intersect
