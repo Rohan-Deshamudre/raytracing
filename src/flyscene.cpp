@@ -1,9 +1,9 @@
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <limits>
 #include <thread>
-#include <algorithm>
 
 #include "intersect.hpp"
 
@@ -16,14 +16,14 @@ float clamp(float v, float min, float max) {
 }
 
 // Reflect ray according to normal
-Eigen::Vector3f reflect(const Eigen::Vector3f& v, const Eigen::Vector3f& n) {
-    return v - 2*v.dot(n)*n;
+Eigen::Vector3f reflect(const Eigen::Vector3f &v, const Eigen::Vector3f &n) {
+  return v - 2 * v.dot(n) * n;
 }
 
 Eigen::Vector2f calculateBarycentric(const Eigen::Vector3f &a,
-                            const Eigen::Vector3f &b,
-                            const Eigen::Vector3f &c,
-                            const Eigen::Vector3f &p) {
+                                     const Eigen::Vector3f &b,
+                                     const Eigen::Vector3f &c,
+                                     const Eigen::Vector3f &p) {
   using namespace Eigen;
 
   Vector3f u = b - a;
@@ -68,7 +68,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/dodgeColorTest.obj");
+                                    "resources/models/cubes.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -97,8 +97,10 @@ void Flyscene::initialize(int width, int height) {
   /*   Tucano::Face face = mesh.getFace(i); */
   /*   for (int j =0; j<face.vertex_ids.size(); ++j){ */
   /*     std::cout<<"vid "<<j<<" "<<face.vertex_ids[j]<<std::endl; */
-  /*     std::cout<<"vertex"<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl; */
-  /*     std::cout<<"normal"<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl; */
+  /*     std::cout<<"vertex"<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl;
+   */
+  /*     std::cout<<"normal"<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl;
+   */
   /*   } */
   /*   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl; */
   /*   std::cout<<"face normal "<<face.normal.transpose() << std::endl << */
@@ -124,9 +126,10 @@ void Flyscene::paintGL(void) {
   phong.render(mesh, flycamera, scene_light);
 
   // render the ray and camera representation for ray debug
-  for (std::vector<Tucano::Shapes::Cylinder>::iterator it = debugRays.begin(); it != debugRays.end(); ++it) {
-	  Tucano::Shapes::Cylinder temp = *it;
-	  temp.render(flycamera, scene_light);
+  for (std::vector<Tucano::Shapes::Cylinder>::iterator it = debugRays.begin();
+       it != debugRays.end(); ++it) {
+    Tucano::Shapes::Cylinder temp = *it;
+    temp.render(flycamera, scene_light);
   }
 
   camerarep.render(flycamera, scene_light);
@@ -161,88 +164,87 @@ void Flyscene::simulate(GLFWwindow *window) {
   flycamera.translate(dx, dy, dz);
 }
 
+void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
+                             int maxReflections) {
 
+  std::cout << "Reflection: " << maxReflections << std::endl;
 
-void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to, int maxReflections) {
+  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+  Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
+  Eigen::Vector3f rayDirection = (to - from).normalized();
 
-	std::cout << "Reflection: " << maxReflections << std::endl;
+  Tucano::Face closestFace;
+  Eigen::Vector3f closestIntersect;
+  float minDist = std::numeric_limits<float>::max();
 
-	Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
-	Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
-	Eigen::Vector3f rayDirection = (to-from).normalized();
+  Eigen::Vector3f intersect;
 
-	Tucano::Face closestFace;
-	Eigen::Vector3f closestIntersect;
-	float minDist = std::numeric_limits<float>::max();
+  // Loop over all faces
+  int num_faces = mesh.getNumberOfFaces();
+  for (int i = 0; i < num_faces; ++i) {
+    Tucano::Face face = mesh.getFace(i);
 
-	Eigen::Vector3f intersect;
+    // Assume a triangle
+    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
+    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
+    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
 
-	// Loop over all faces
-	int num_faces = mesh.getNumberOfFaces();
-	for (int i = 0; i < num_faces; ++i) {
-		Tucano::Face face = mesh.getFace(i);
+    // Intersect + set calculate distance
+    if (Intersect::triangle(from, to, vert1.head<3>() / vert1.w(),
+                            vert2.head<3>() / vert2.w(),
+                            vert3.head<3>() / vert3.w(), intersect)) {
+      Eigen::Vector3f distVector = intersect - from;
+      float dist = distVector.norm();
+      if (dist < minDist) {
+        minDist = dist;
+        closestFace = face;
+        closestIntersect = intersect;
+      }
+    }
+  }
 
-		// Assume a triangle
-		Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-		Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-		Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
+  if (minDist < std::numeric_limits<float>::max()) {
+    // intersection
 
-		// Intersect + set calculate distance
-		if (Intersect::triangle(from, to, vert1.head<3>() / vert1.w(),
-			vert2.head<3>() / vert2.w(),
-			vert3.head<3>() / vert3.w(), intersect)) {
-			Eigen::Vector3f distVector = intersect - from;
-			float dist = distVector.norm();
-			if (dist < minDist) {
-				minDist = dist;
-				closestFace = face;
-				closestIntersect = intersect;
-			}
-		}
-	}
-	if (minDist < std::numeric_limits<float>::max()) {
-		//intersection
-		
-		//calculating reflection
-		Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace.normal);
-		float length = 3; //should be minDist
-		Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.01, length, 16, 64);
-		std::cout << minDist << std::endl;
-		ray.resetModelMatrix();
-		ray.setOriginOrientation(from, rayDirection);
-		debugRays.push_back(ray);
-		if (maxReflections > 1) {
-			traceDebugRay(closestIntersect, closestIntersect + reflectDir, maxReflections - 1);
-		}
-		else {
-			//should draw most recent ray
-		}
-	}
-	else {
-		//no intersection
-		Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.01, 42, 16, 64);
-		ray.resetModelMatrix();
-		ray.setOriginOrientation(from, rayDirection);
-		debugRays.push_back(ray);
-	}
-	
+    // calculating reflection
+    Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace.normal);
+    float length = 3; // should be minDist
+    Tucano::Shapes::Cylinder ray =
+        Tucano::Shapes::Cylinder(0.01, length, 16, 64);
+    std::cout << minDist << std::endl;
+    ray.resetModelMatrix();
+    ray.setOriginOrientation(from, rayDirection);
+    debugRays.push_back(ray);
+    if (maxReflections > 1) {
+      traceDebugRay(closestIntersect, closestIntersect + reflectDir,
+                    maxReflections - 1);
+    } else {
+      // should draw most recent ray
+    }
+  } else {
+    // no intersection
+    Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.01, 42, 16, 64);
+    ray.resetModelMatrix();
+    ray.setOriginOrientation(from, rayDirection);
+    debugRays.push_back(ray);
+  }
 }
 
 void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
-	debugRays.clear();
-	
-	// from pixel position to world coordinates
-	Eigen::Vector3f screen_pos = flycamera.screenToWorld(mouse_pos);
+  debugRays.clear();
 
-	// direction from camera center to click position
-	Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
+  // from pixel position to world coordinates
+  Eigen::Vector3f screen_pos = flycamera.screenToWorld(mouse_pos);
 
-	// position and orient the cylinder representing the ray
-	traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 2);
+  // direction from camera center to click position
+  Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
 
-	// place the camera representation (frustum) on current camera location,
-	camerarep.resetModelMatrix();
-	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
+  // position and orient the cylinder representing the ray
+  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 2);
+
+  // place the camera representation (frustum) on current camera location,
+  camerarep.resetModelMatrix();
+  camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
 }
 
 void Flyscene::raytraceScene(int width, int height) {
@@ -313,12 +315,9 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       Eigen::Vector3f raw = traceRay(origin, screen_coords);
 
       // gamma 2 correction
-      pixel_data[i][j] =
-        Eigen::Vector3f(
-          sqrt(clamp(raw(0), 0.f, 1.f)),
-          sqrt(clamp(raw(1), 0.f, 1.f)),
-          sqrt(clamp(raw(2), 0.f, 1.f))
-        );
+      pixel_data[i][j] = Eigen::Vector3f(sqrt(clamp(raw(0), 0.f, 1.f)),
+                                         sqrt(clamp(raw(1), 0.f, 1.f)),
+                                         sqrt(clamp(raw(2), 0.f, 1.f)));
     }
   }
 }
@@ -351,7 +350,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                             vert3.head<3>() / vert3.w(), intersect)) {
       Eigen::Vector3f distVector = intersect - origin;
       float dist = distVector.norm();
-      if (dist < minDist) {
+      if (dist < minDist && distVector.dot(dest - origin) > 0.f) {
         minDist = dist;
         closestFace = face;
         closestIntersect = intersect;
@@ -366,22 +365,20 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     float shininess = material.getShininess();
 
     // Interpolate normal
-    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[0]);
-    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[1]);
-    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(closestFace.vertex_ids[2]);
+    Eigen::Vector4f vert1 =
+        shapeMatrix * mesh.getVertex(closestFace.vertex_ids[0]);
+    Eigen::Vector4f vert2 =
+        shapeMatrix * mesh.getVertex(closestFace.vertex_ids[1]);
+    Eigen::Vector4f vert3 =
+        shapeMatrix * mesh.getVertex(closestFace.vertex_ids[2]);
     Eigen::Vector2f barycentric = calculateBarycentric(
-      vert1.head<3>() / vert1.w(),
-      vert2.head<3>() / vert2.w(),
-      vert3.head<3>() / vert3.w(),
-      closestIntersect
-    );
+        vert1.head<3>() / vert1.w(), vert2.head<3>() / vert2.w(),
+        vert3.head<3>() / vert3.w(), closestIntersect);
 
     Eigen::Vector3f surfaceNormal = interpolate(
-      mesh.getNormal(closestFace.vertex_ids[0]).normalized(),
-      mesh.getNormal(closestFace.vertex_ids[1]).normalized(),
-      mesh.getNormal(closestFace.vertex_ids[2]).normalized(),
-      barycentric
-    );
+        mesh.getNormal(closestFace.vertex_ids[0]).normalized(),
+        mesh.getNormal(closestFace.vertex_ids[1]).normalized(),
+        mesh.getNormal(closestFace.vertex_ids[2]).normalized(), barycentric);
     surfaceNormal = (normalMatrix * surfaceNormal.normalized()).normalized();
 
     // calculate diffuse + specular illumination
@@ -394,16 +391,53 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
       float lightDistance = toLight.norm();
       Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
 
-      diffuse +=
-          kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
-      specular +=
-          ks * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
+      // check hard shadow
+      minDist = std::numeric_limits<float>::max();
+      Eigen::Vector3f impactPoint = intersect;
+
+      for (int i = 0; i < num_faces; ++i) {
+        Tucano::Face face = mesh.getFace(i);
+
+        // Assume a triangle
+        Eigen::Vector4f vert1 =
+            shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
+        Eigen::Vector4f vert2 =
+            shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
+        Eigen::Vector4f vert3 =
+            shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
+
+        // Intersect + set calculate distance
+        if (Intersect::triangle(impactPoint, impactPoint + toLightUnit,
+                                vert1.head<3>() / vert1.w(),
+                                vert2.head<3>() / vert2.w(),
+                                vert3.head<3>() / vert3.w(), intersect)) {
+          Eigen::Vector3f distVector = intersect - impactPoint;
+          float dist = distVector.norm();
+          // check if closer and in the correct halfspace
+          if (dist < minDist &&
+              distVector.dot(impactPoint + toLightUnit) > 0.f) {
+            minDist = dist;
+
+            // Only need to know that such an intersect exists
+            /* return Eigen::Vector3f(1.0, 0.0, 0.0); */
+            break;
+          }
+        }
+      }
+
+      // if no hit on ray back to light -> illuminated
+      if (minDist >= std::numeric_limits<float>::max()) {
+        diffuse +=
+            kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
+        specular +=
+            ks * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
+      }
     }
 
+    /* return Eigen::Vector3f(0.0, 0.0, 1.0); */
     return diffuse + specular;
   }
 
   // no intersection
   return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
 }
-
