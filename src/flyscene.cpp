@@ -195,7 +195,7 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
                             vert3.head<3>() / vert3.w(), intersect)) {
       Eigen::Vector3f distVector = intersect - from;
       float dist = distVector.norm();
-      if (dist < minDist) {
+      if (dist < minDist && distVector.dot(to - from) > 0.f) {
         minDist = dist;
         closestFace = face;
         closestIntersect = intersect;
@@ -210,16 +210,15 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
     Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace.normal);
     float length = 3; // should be minDist
     Tucano::Shapes::Cylinder ray =
-        Tucano::Shapes::Cylinder(0.01, length, 16, 64);
+        Tucano::Shapes::Cylinder(0.01, minDist, 16, 64);
+
     std::cout << minDist << std::endl;
     ray.resetModelMatrix();
     ray.setOriginOrientation(from, rayDirection);
     debugRays.push_back(ray);
     if (maxReflections > 1) {
-      traceDebugRay(closestIntersect, closestIntersect + reflectDir,
-                    maxReflections - 1);
-    } else {
-      // should draw most recent ray
+      traceDebugRay(closestIntersect + reflectDir * 0.001f,
+                    closestIntersect + reflectDir, maxReflections - 1);
     }
   } else {
     // no intersection
