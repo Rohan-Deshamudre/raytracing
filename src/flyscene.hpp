@@ -78,8 +78,7 @@ public:
    * @return a RGB color
    */
   Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
-  
-  bool lightBlocked(Eigen::Vector3f intersect, Eigen::Vector3f lightLoc);
+
 private:
   // A simple phong shader for rendering meshes
   Tucano::Effects::PhongMaterial phong;
@@ -112,7 +111,8 @@ private:
   /// MTL materials
   vector<Tucano::Material::Mtl> materials;
 
-
+  bool lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,
+                    Eigen::Vector3f lightPos);
 };
 
 #endif // FLYSCENE
