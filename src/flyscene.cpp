@@ -68,7 +68,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/cubes.obj");
+                                    "resources/models/torus.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -385,23 +385,20 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector3f specular = Eigen::Vector3f(0.0, 0.0, 0.0);
 
     for (auto light : lights) {
-	  Eigen::Vector3f lightColour = Eigen::Vector3f(0.0, 0.0, 0.0);
-	  if (!lightBlocked(intersect, light)) {
-		  lightColour = Eigen::Vector3f(1.0, 1.0, 1.0);
-	  }
+      Eigen::Vector3f lightColour = Eigen::Vector3f(0.0, 0.0, 0.0);
+      if (!lightBlocked(intersect, light)) {
+        lightColour = Eigen::Vector3f(1.0, 1.0, 1.0);
+      }
       Eigen::Vector3f toLight = light - closestIntersect;
       Eigen::Vector3f toLightUnit = toLight.normalized();
       float lightDistance = toLight.norm();
       Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
 
-
-
       // if no hit on ray back to light -> illuminated
-        diffuse +=
-            kd.cwiseProduct(lightColour) * std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
-        specular +=
-            ks.cwiseProduct(lightColour) * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
-
+      diffuse += kd.cwiseProduct(lightColour) *
+                 std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
+      specular += ks.cwiseProduct(lightColour) *
+                  pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
     }
 
     /* return Eigen::Vector3f(0.0, 0.0, 1.0); */
@@ -412,27 +409,25 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
   return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
 }
 
+bool Flyscene::lightBlocked(Eigen::Vector3f intersect,
+                            Eigen::Vector3f lightLoc) {
+  Eigen::Vector3f is;
+  int num_faces = mesh.getNumberOfFaces();
+  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+  for (int i = 0; i < num_faces; ++i) {
+    Tucano::Face face = mesh.getFace(i);
 
+    // Assume a triangle
+    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
+    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
+    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
 
-bool Flyscene::lightBlocked(Eigen::Vector3f intersect, Eigen::Vector3f lightLoc) {
-	Eigen::Vector3f is;
-	int num_faces = mesh.getNumberOfFaces();
-	Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
-	for (int i = 0; i < num_faces; ++i) {
-		Tucano::Face face = mesh.getFace(i);
-
-		// Assume a triangle
-		Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-		Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-		Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
-
-		// Intersect
-		if (Intersect::triangle(intersect, lightLoc, vert1.head<3>() / vert1.w(),
-			vert2.head<3>() / vert2.w(),
-			vert3.head<3>() / vert3.w(), is)) {
-			return true;
-		}
-	}
-	return false;
+    // Intersect
+    if (Intersect::triangle(intersect, lightLoc, vert1.head<3>() / vert1.w(),
+                            vert2.head<3>() / vert2.w(),
+                            vert3.head<3>() / vert3.w(), is)) {
+      return true;
+    }
+  }
+  return false;
 }
-
