@@ -56,10 +56,20 @@ public:
    */
   void createDebugRay(const Eigen::Vector2f &mouse_pos);
 
+  void traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to, int maxReflections);
+
   /**
-   * @brief raytrace your scene from current camera position   
+   * @brief raytrace your scene from current camera position
+   * @see   raytracePartScene
    */
   void raytraceScene(int width = 0, int height = 0);
+
+  /**
+   * @brief raytrace part of your scene from current camera position
+   */
+  void raytracePartScene(vector<vector<Eigen::Vector3f>>& pixel_data,
+                         int width = 0, int height = 0,
+                         int x_start = 0, int x_end = 0);
 
   /**
    * @brief trace a single ray from the camera passing through dest
@@ -98,8 +108,8 @@ private:
   // Scene light represented as a camera
   Tucano::Camera scene_light;
 
-  /// A very thin cylinder to draw a debug ray
-  Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
+  /// A vector of Cylinders for debug rays
+  std::vector<Tucano::Shapes::Cylinder> debugRays;
 
   // Scene meshes
   Tucano::Mesh mesh;

@@ -5,6 +5,9 @@ set (PROJECT_NAME "raytracing")
 set(PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 include_directories(${PROJECT_DIR})
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # Tucano directories.
 set(TUCANO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/dependencies/tucano/")
 
@@ -63,4 +66,5 @@ target_link_libraries(
   ${GLEW_LIBRARIES}
   ${GLFW_LIBRARIES}
   ${OPENGL_LIBRARIES}
+  Threads::Threads
   )
