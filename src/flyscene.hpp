@@ -116,6 +116,9 @@ private:
 
   /// MTL materials
   vector<Tucano::Material::Mtl> materials;
+
+  bool lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,
+                    Eigen::Vector3f lightPos);
 };
 
 #endif // FLYSCENE

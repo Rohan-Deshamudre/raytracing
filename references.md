@@ -7,4 +7,5 @@ These materials were used while developing this raytracer.
 3. [Ray Tracing in a Weekend](https://github.com/RayTracing/raytracing.github.io)
 4. [Phong reflection model](https://en.wikipedia.org/wiki/Phong_reflection_model)
 5. [Diffuse point lighting](https://www.tomdalling.com/blog/modern-opengl/06-diffuse-point-lighting/)
+6. [Hard shadows](https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/ligth-and-shadows)
 

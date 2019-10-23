@@ -68,7 +68,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/cubes.obj");
+                                    "resources/models/torus2.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -115,7 +115,7 @@ void Flyscene::paintGL(void) {
   Eigen::Vector4f viewport = flycamera.getViewport();
 
   // clear the screen and set background color
-  glClearColor(0.9, 0.9, 0.9, 0.0);
+  glClearColor(0.95, 0.95, 0.95, 0.0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // position the scene light at the last ray-tracing light source
@@ -331,13 +331,12 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
   Eigen::Vector3f closestIntersect;
   float minDist = std::numeric_limits<float>::max();
 
-  Eigen::Vector3f intersect;
-
   // Loop over all faces
   int num_faces = mesh.getNumberOfFaces();
   for (int i = 0; i < num_faces; ++i) {
-    Tucano::Face face = mesh.getFace(i);
+    Eigen::Vector3f intersect;
 
+    Tucano::Face face = mesh.getFace(i);
     // Assume a triangle
     Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
     Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
@@ -347,9 +346,9 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     if (Intersect::triangle(origin, dest, vert1.head<3>() / vert1.w(),
                             vert2.head<3>() / vert2.w(),
                             vert3.head<3>() / vert3.w(), intersect)) {
-      Eigen::Vector3f distVector = intersect - origin;
-      float dist = distVector.norm();
-      if (dist < minDist && distVector.dot(dest - origin) > 0.f) {
+      Eigen::Vector3f rayVector = intersect - origin;
+      float dist = rayVector.norm();
+      if (dist < minDist && rayVector.dot(dest - origin) > 0.f) {
         minDist = dist;
         closestFace = face;
         closestIntersect = intersect;
@@ -357,6 +356,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     }
   }
 
+  // Shading
   if (minDist < std::numeric_limits<float>::max()) {
     auto material = materials[closestFace.material_id];
     Eigen::Vector3f kd = material.getDiffuse();
@@ -373,7 +373,6 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector2f barycentric = calculateBarycentric(
         vert1.head<3>() / vert1.w(), vert2.head<3>() / vert2.w(),
         vert3.head<3>() / vert3.w(), closestIntersect);
-
     Eigen::Vector3f surfaceNormal = interpolate(
         mesh.getNormal(closestFace.vertex_ids[0]).normalized(),
         mesh.getNormal(closestFace.vertex_ids[1]).normalized(),
@@ -385,58 +384,65 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector3f specular = Eigen::Vector3f(0.0, 0.0, 0.0);
 
     for (auto light : lights) {
-      Eigen::Vector3f toLight = light - closestIntersect;
-      Eigen::Vector3f toLightUnit = toLight.normalized();
-      float lightDistance = toLight.norm();
-      Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
+      Eigen::Vector3f lightColour = Eigen::Vector3f(1.0, 1.0, 1.0);
 
-      // check hard shadow
-      minDist = std::numeric_limits<float>::max();
-      Eigen::Vector3f impactPoint = intersect;
+      Eigen::Vector3f rayVector = closestIntersect - origin;
 
-      for (int i = 0; i < num_faces; ++i) {
-        Tucano::Face face = mesh.getFace(i);
+      // check if in shadow
+      if (!lightBlocked(closestFace, closestIntersect - 0.001f * rayVector,
+                        light)) {
+        Eigen::Vector3f toLight = light - closestIntersect;
+        Eigen::Vector3f toLightUnit = toLight.normalized();
+        float lightDistance = toLight.norm();
+        Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
 
-        // Assume a triangle
-        Eigen::Vector4f vert1 =
-            shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-        Eigen::Vector4f vert2 =
-            shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-        Eigen::Vector4f vert3 =
-            shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
-
-        // Intersect + set calculate distance
-        if (Intersect::triangle(impactPoint, impactPoint + toLightUnit,
-                                vert1.head<3>() / vert1.w(),
-                                vert2.head<3>() / vert2.w(),
-                                vert3.head<3>() / vert3.w(), intersect)) {
-          Eigen::Vector3f distVector = intersect - impactPoint;
-          float dist = distVector.norm();
-          // check if closer and in the correct halfspace
-          if (dist < minDist &&
-              distVector.dot(impactPoint + toLightUnit) > 0.f) {
-            minDist = dist;
-
-            // Only need to know that such an intersect exists
-            /* return Eigen::Vector3f(1.0, 0.0, 0.0); */
-            break;
-          }
-        }
-      }
-
-      // if no hit on ray back to light -> illuminated
-      if (minDist >= std::numeric_limits<float>::max()) {
-        diffuse +=
-            kd * std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
-        specular +=
-            ks * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
+        // if no hit on ray back to light -> illuminated
+        diffuse += kd.cwiseProduct(lightColour) *
+                   std::max(0.f, surfaceNormal.dot(toLightUnit)) /
+                   lightDistance;
+        specular += ks.cwiseProduct(lightColour) *
+                    pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
       }
     }
 
-    /* return Eigen::Vector3f(0.0, 0.0, 1.0); */
     return diffuse + specular;
   }
 
   // no intersection
-  return Eigen::Vector3f(0.9f, 0.9f, 0.9f);
+  return Eigen::Vector3f(0.95f, 0.95f, 0.95f);
+}
+
+bool Flyscene::lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,
+                            Eigen::Vector3f lightPos) {
+  Eigen::Vector3f intersect;
+
+  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+
+  int num_faces = mesh.getNumberOfFaces();
+  for (int i = 0; i < num_faces; ++i) {
+    Tucano::Face face = mesh.getFace(i);
+
+    // a surface cannot cast shadow on itself
+    if ((face.vertex_ids[0] == originFace.vertex_ids[0]) &&
+        (face.vertex_ids[1] == originFace.vertex_ids[1]) &&
+        (face.vertex_ids[2] == originFace.vertex_ids[2]))
+      continue;
+
+    // Assume a triangle
+    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
+    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
+    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
+
+    // Intersect
+    if (Intersect::triangle(origin, lightPos,
+                            vert1.head<3>() / vert1.w(),
+                            vert2.head<3>() / vert2.w(),
+                            vert3.head<3>() / vert3.w(), intersect)) {
+      Eigen::Vector3f rayVector = intersect - origin;
+      if (rayVector.dot(lightPos - origin) > 0.f)
+        return true;
+    }
+  }
+
+  return false;
 }
