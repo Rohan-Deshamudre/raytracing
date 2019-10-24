@@ -1,3 +1,7 @@
+#pragma once
+
+#include <limits>
+
 namespace Intersect {
 
 using namespace Eigen;
@@ -51,61 +55,39 @@ inline bool triangle(Vector3f rayOrigin, Vector3f rayPoint,
     if (y < 0.0 || (x + y) > 1.0)
         return false;
 
-    return true;                   // I is in T
+    return true;
   }
   else {
     return false;
   }
 }
 
-inline bool Box(const Vector3f &origin,const Vector3f &direction, Vector3f Bmin, Vector3f Bmax) {
-	
-	float xmin = (Bmin.x() - origin.x()) / direction.x();
-	float xmax = (Bmax.x() - origin.x()) / direction.x();
+inline bool box(const Eigen::Vector3f &origin, const Eigen::Vector3f &point,
+                Vector3f bmin, Vector3f bmax) {
+  using namespace Eigen;
 
-	if (xmin > xmax) {
-		swap(xmin, xmax);
-	}
+  Vector3f direction = point - origin;
 
-	float ymin = (Bmin.y() - origin.y()) / direction.y();
-	float ymax = (Bmax.y() - origin.y()) / direction.y();
+  Vector3f invD =
+      Vector3f(1.f / direction.x(), 1.f / direction.y(), 1.f / direction.z());
 
-	if (ymin > ymax) {
-		swap(ymin, ymax);
-	}
+  Vector3f t0s = (bmin - origin).cwiseProduct(invD);
+  Vector3f t1s = (bmax - origin).cwiseProduct(invD);
 
-	if ((xmin > ymax) || (ymin > xmax)) {
-		return false;
-	}
+  Vector3f tsmaller =
+      Vector3f(std::min(t0s.x(), t1s.x()), std::min(t0s.y(), t1s.y()),
+               std::min(t0s.z(), t1s.z()));
+  Vector3f tbigger =
+      Vector3f(std::max(t0s.x(), t1s.x()), std::max(t0s.y(), t1s.y()),
+               std::max(t0s.z(), t1s.z()));
 
-	if (ymin > xmin) {
-		xmin = ymin;
-	}	
+  float tmin = std::numeric_limits<float>::min();
+  float tmax = std::numeric_limits<float>::max();
+  tmin = std::max(tmin,
+                  std::max(tsmaller.x(), std::max(tsmaller.y(), tsmaller.z())));
+  tmax =
+      std::min(tmax, std::min(tbigger.x(), std::min(tbigger.y(), tbigger.z())));
 
-	if (ymax < xmax) {
-		xmax = ymax;
-	}		
-
-	float zmin = (Bmin.z() - origin.z()) / direction.z();
-	float zmax = (Bmax.z() - origin.z()) / direction.z();
-
-	if (zmin > zmax) {
-		swap(zmin, zmax);
-	}
-
-	if ((xmin > zmax) || (zmin > xmax)) {
-		return false;
-	}
-
-	if (zmin > xmin){
-		xmin = zmin;
-	}
-
-	if (zmax < xmax) {
-		xmax = zmax;
-	}
-
-	return true;	
-
+  return (tmin < tmax);
 }
 } // namespace Intersect

@@ -4,6 +4,8 @@
 #include <GLFW/glfw3.h>
 #include "flyscene.hpp"
 #include <iostream>
+#include <chrono>
+
 
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 800
@@ -38,7 +40,7 @@ void initialize(void) {
 #endif
 
   flyscene = new Flyscene();
-  flyscene->initialize(WINDOW_WIDTH, WINDOW_HEIGHT);  
+  flyscene->initialize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
   std::cout << endl
             << endl
@@ -50,6 +52,8 @@ void initialize(void) {
   std::cout << "L    : Add new light source at current camera position."
             << std::endl;
   std::cout << "T    : Ray trace the scene." << std::endl;
+  std::cout << "U    : Shoot debug ray with one more reflection." << std::endl;
+  std::cout << "J  : Shoot debug ray with one less reflection." << std::endl;
   std::cout << "Esc  : Close application." << std::endl;
   std::cout << " ********************************* " << std::endl;
 }
@@ -64,8 +68,24 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action,
     flyscene->createDebugRay(mouse_pos);
   else if (key == GLFW_KEY_L && action == GLFW_PRESS)
     flyscene->addLight();
-  else if (key == GLFW_KEY_T && action == GLFW_PRESS)
-    flyscene->raytraceScene();
+  else if (key == GLFW_KEY_T && action == GLFW_PRESS) {
+	  auto t1 = std::chrono::high_resolution_clock::now();
+	  flyscene->raytraceScene();
+	  auto t2 = std::chrono::high_resolution_clock::now();
+
+	  auto duration = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
+
+	  std::cout << "It took " << duration << " seconds to raytrace the Scene" << std::endl;
+	  std::cout << "Resulting in the speed of " << (WINDOW_HEIGHT * WINDOW_WIDTH) / duration << "pixels/s " << std::endl;
+  }
+  else if (key == GLFW_KEY_U && action == GLFW_PRESS) {
+	  flyscene->modifyDebugReflection(1);
+	  flyscene->createDebugRay(mouse_pos);
+  }
+  else if (key == GLFW_KEY_J && action == GLFW_PRESS) {
+	  flyscene->modifyDebugReflection(-1);
+	  flyscene->createDebugRay(mouse_pos);
+  }
 }
 
 static void mouseButtonCallback(GLFWwindow *window, int button, int action,
