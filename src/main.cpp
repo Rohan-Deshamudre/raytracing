@@ -50,6 +50,8 @@ void initialize(void) {
   std::cout << "L    : Add new light source at current camera position."
             << std::endl;
   std::cout << "T    : Ray trace the scene." << std::endl;
+  std::cout << "U    : Shoot debug ray with one more reflection." << std::endl;
+  std::cout << "J  : Shoot debug ray with one less reflection." << std::endl;
   std::cout << "Esc  : Close application." << std::endl;
   std::cout << " ********************************* " << std::endl;
 }
@@ -66,6 +68,14 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action,
     flyscene->addLight();
   else if (key == GLFW_KEY_T && action == GLFW_PRESS)
     flyscene->raytraceScene();
+  else if (key == GLFW_KEY_U && action == GLFW_PRESS) {
+	  flyscene->modifyDebugReflection(1);
+	  flyscene->createDebugRay(mouse_pos);
+  }
+  else if (key == GLFW_KEY_J && action == GLFW_PRESS) {
+	  flyscene->modifyDebugReflection(-1);
+	  flyscene->createDebugRay(mouse_pos);
+  }
 }
 
 static void mouseButtonCallback(GLFWwindow *window, int button, int action,

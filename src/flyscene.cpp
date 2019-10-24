@@ -58,9 +58,21 @@ Eigen::Vector3f interpolate(const Eigen::Vector3f &nx,
   return x * ny + y * nz + (1.f - x - y) * nx;
 }
 
+void Flyscene::modifyDebugReflection(int change) {
+	if (change > 0 || maxDebugReflections > 1) {
+		maxDebugReflections += change;
+		std::cout << "max Debug ray reflections: " << maxDebugReflections-1 << std::endl;
+	}
+	
+
+}
+
 void Flyscene::initialize(int width, int height) {
   // initiliaze the Phong Shading effect for the Opengl Previewer
   phong.initialize();
+
+  //set Max debug ray reflections
+  maxDebugReflections = 3;
 
   // set the camera's projection matrix
   flycamera.setPerspectiveMatrix(60.0, width / (float)height, 0.1f, 100.0f);
@@ -167,8 +179,6 @@ void Flyscene::simulate(GLFWwindow *window) {
 void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
                              int maxReflections) {
 
-  std::cout << "Reflection: " << maxReflections << std::endl;
-
   Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
   Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
   Eigen::Vector3f rayDirection = (to - from).normalized();
@@ -183,11 +193,11 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
   int num_faces = mesh.getNumberOfFaces();
   for (int i = 0; i < num_faces; ++i) {
     Tucano::Face face = mesh.getFace(i);
-
     // Assume a triangle
     Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
     Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
     Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
+
 
     // Intersect + set calculate distance
     if (Intersect::triangle(from, to, vert1.head<3>() / vert1.w(),
@@ -212,7 +222,6 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
     Tucano::Shapes::Cylinder ray =
         Tucano::Shapes::Cylinder(0.01, minDist, 16, 64);
 
-    std::cout << minDist << std::endl;
     ray.resetModelMatrix();
     ray.setOriginOrientation(from, rayDirection);
     debugRays.push_back(ray);
@@ -232,14 +241,14 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
 void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
   debugRays.clear();
 
-  // from pixel position to world coordinates
+  // from pixel position to ra coordinates
   Eigen::Vector3f screen_pos = flycamera.screenToWorld(mouse_pos);
 
   // direction from camera center to click position
   Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
 
   // position and orient the cylinder representing the ray
-  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 2);
+  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, maxDebugReflections);
 
   // place the camera representation (frustum) on current camera location,
   camerarep.resetModelMatrix();
