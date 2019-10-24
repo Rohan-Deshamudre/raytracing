@@ -167,6 +167,8 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
     if (maxReflections > 1) {
       traceDebugRay(closestIntersect + reflectDir * 0.001f,
                     closestIntersect + reflectDir, maxReflections - 1);
+    } else {
+      // should draw most recent ray
     }
   } else {
     // no intersection
@@ -187,6 +189,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
   Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
 
   // position and orient the cylinder representing the ray
+
   traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, maxDebugReflections);
 
   // place the camera representation (frustum) on current camera location,
@@ -259,7 +262,7 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
-      Eigen::Vector3f raw = traceRay(origin, screen_coords);
+      Eigen::Vector3f raw = traceRay(origin, screen_coords, 10, false);
 
       // gamma 2 correction
       pixel_data[i][j] = Eigen::Vector3f(sqrt(clamp(raw(0), 0.f, 1.f)),
@@ -269,8 +272,22 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
   }
 }
 
+Eigen::Vector3f Flyscene::min(Eigen::Vector3f a, Eigen::Vector3f b) {
+	double x = std::min(a.x(), b.x());
+	double y = std::min(a.y(), b.y());
+	double z = std::min(a.z(), b.z());
+
+	return Eigen::Vector3f(x, y, z);
+}
+
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
-                                   Eigen::Vector3f &dest) {
+                                   Eigen::Vector3f &dest, int levels, bool isReflected) {
+
+	//std::cout << "levels are " << levels << "\n";
+	if (levels <= 0) {
+		return Eigen::Vector3f(0.0, 0.0, 0.0);
+	}
+  
   // intersect with bounding box
   if (!meshHierarchy.intersect(origin, dest))
     return Eigen::Vector3f(0.0f, 0.0f, 1.0f);
@@ -315,6 +332,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector3f ks = material.getSpecular();
     float shininess = material.getShininess();
 
+	//std::cout << ks.x() << " " << ks.y() << " " << ks.z() << "\n";
+
     // Interpolate normal
     Eigen::Vector4f vert1 =
         shapeMatrix * mesh.getVertex(closestFace.vertex_ids[0]);
@@ -338,9 +357,12 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     for (auto light : lights) {
       Eigen::Vector3f lightColour = Eigen::Vector3f(1.0, 1.0, 1.0);
 
-      Eigen::Vector3f rayVector = closestIntersect - origin;
+      // check hard shadow
+      //minDist = std::numeric_limits<float>::max();
+      //Eigen::Vector3f impactPoint = closestIntersect + closestFace.normal * 1e-5;
 
       // check if in shadow
+	  Eigen::Vector3f rayVector = closestIntersect - origin;
       if (!lightBlocked(closestFace, closestIntersect - 0.001f * rayVector,
                         light)) {
         Eigen::Vector3f toLight = light - closestIntersect;
@@ -357,11 +379,73 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
       }
     }
 
-    return diffuse + specular;
+	/*
+		--------------------------------------
+		Compute recursive ray tracing.
+		--------------------------------------
+
+	*/
+
+	Eigen::Vector3f reflectedVector = reflect(rayDirection, closestFace.normal).normalized();
+	Eigen::Vector3f reflColor = Eigen::Vector3f(0.0, 0.0, 0.0);
+	//std::cout << "here " << minDist << "\n";
+
+	// check if ray actually hits something
+	if (minDist < std::numeric_limits<float>::max()) {
+		//std::cout << "lool\n";
+		//Eigen::Vector3f point = closestIntersect + reflectedVector;
+		//reflColor = traceRay(closestIntersect, point, levels - 1);
+		Eigen::Vector3f lightColour = Eigen::Vector3f(1.0, 1.0, 1.0);
+		Tucano::Material::Mtl mat = materials[closestFace.material_id];
+		
+
+		closestIntersect = closestIntersect + 0.005 * closestFace.normal;
+		Eigen::Vector3f toLight = lights[0] - closestIntersect;
+		Eigen::Vector3f toLightUnit = toLight.normalized();
+		Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
+		Eigen::Vector3f point =  closestIntersect + reflectedVector;
+		
+		int illumination = mat.getIlluminationModel();
+		//std::cout << illumination << "\n";
+
+		switch (illumination) {
+		case 0:
+			return kd;
+
+		case 1:
+			return diffuse;
+
+		case 2:
+			return diffuse + specular;
+
+		case 3:
+			return diffuse + ks.cwiseProduct(lightColour * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess)
+					+ traceRay(closestIntersect, point, levels - 1, true));
+
+		case 4:
+			return diffuse + ks.cwiseProduct(lightColour * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess)
+				+ traceRay(closestIntersect, point, levels - 1, true));
+
+		default:
+			return Eigen::Vector3f(0.0, 0.0, 0.0);
+
+
+		}
+	}
+
+
+	/*
+		--------------------------------------
+		End of recursive ray tracing.
+		--------------------------------------
+	*/
+
+    /* return Eigen::Vector3f(0.0, 0.0, 1.0); */
+	return diffuse + specular; //+ reflColor;
   }
 
   // no intersection
-  return Eigen::Vector3f(0.95f, 0.95f, 0.95f);
+  return isReflected ? Eigen::Vector3f(0.f, 0.f, 0.f) : Eigen::Vector3f(0.95f, 0.95f, 0.95f);
 }
 
 bool Flyscene::lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,

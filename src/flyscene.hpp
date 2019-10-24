@@ -82,7 +82,10 @@ public:
    * @param dest Other point on the ray, usually screen coordinates
    * @return a RGB color
    */
-  Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
+  Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest, int levels, bool isReflected);
+
+
+  Eigen::Vector3f min(Eigen::Vector3f a, Eigen::Vector3f b);
 
 private:
 
