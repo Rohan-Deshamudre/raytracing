@@ -68,7 +68,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/whitePellet.obj");
+                                    "resources/models/torus2.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -241,7 +241,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
   Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
 
   // position and orient the cylinder representing the ray
-  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 2);
+  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 4);
 
   // place the camera representation (frustum) on current camera location,
   camerarep.resetModelMatrix();
@@ -321,6 +321,14 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
                                          sqrt(clamp(raw(2), 0.f, 1.f)));
     }
   }
+}
+
+Eigen::Vector3f Flyscene::min(Eigen::Vector3f a, Eigen::Vector3f b) {
+	double x = std::min(a.x(), b.x());
+	double y = std::min(a.y(), b.y());
+	double z = std::min(a.z(), b.z());
+
+	return Eigen::Vector3f(x, y, z);
 }
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
@@ -436,6 +444,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
 		Eigen::Vector3f lightColour = Eigen::Vector3f(1.0, 1.0, 1.0);
 		Tucano::Material::Mtl mat = materials[closestFace.material_id];
 		
+
+		closestIntersect = closestIntersect + 0.005 * closestFace.normal;
 		Eigen::Vector3f toLight = lights[0] - closestIntersect;
 		Eigen::Vector3f toLightUnit = toLight.normalized();
 		Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
@@ -455,15 +465,12 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
 			return diffuse + specular;
 
 		case 3:
-			//Eigen::Vector3f point = closestIntersect + reflectedVector;
-			return diffuse + ks.cwiseProduct(lightColour * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess) +
-				traceRay(closestIntersect, point, levels - 1, true));
+			return diffuse + ks.cwiseProduct(lightColour * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess)
+					+ traceRay(closestIntersect, point, levels - 1, true));
 
 		case 4:
-			//point = closestIntersect + reflectedVector;
-			//std::cout << "hello" << "\n";
-			return diffuse + ks.cwiseProduct(lightColour * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess) +
-				traceRay(closestIntersect, point, levels - 1, true));
+			return diffuse + ks.cwiseProduct(lightColour * pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess)
+				+ traceRay(closestIntersect, point, levels - 1, true));
 
 		default:
 			return Eigen::Vector3f(0.0, 0.0, 0.0);
