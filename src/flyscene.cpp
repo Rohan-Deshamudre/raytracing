@@ -8,6 +8,8 @@
 #include "intersect.hpp"
 #include "helper.hpp"
 
+#include "MeshHierarchy.hpp"
+
 void Flyscene::initialize(int width, int height) {
   // initiliaze the Phong Shading effect for the Opengl Previewer
   phong.initialize();
@@ -19,9 +21,10 @@ void Flyscene::initialize(int width, int height) {
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
                                     "resources/models/torus2.obj");
-
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
+  // create mesh hierarchy
+  this->meshHierarchy = MeshHierarchy(mesh);
 
   // pass all the materials to the Phong Shader
   for (int i = 0; i < materials.size(); ++i)
@@ -42,20 +45,6 @@ void Flyscene::initialize(int width, int height) {
   createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 
   glEnable(GL_DEPTH_TEST);
-
-  /* for (int i = 0; i<mesh.getNumberOfFaces(); ++i){ */
-  /*   Tucano::Face face = mesh.getFace(i); */
-  /*   for (int j =0; j<face.vertex_ids.size(); ++j){ */
-  /*     std::cout<<"vid "<<j<<" "<<face.vertex_ids[j]<<std::endl; */
-  /*     std::cout<<"vertex"<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl;
-   */
-  /*     std::cout<<"normal"<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl;
-   */
-  /*   } */
-  /*   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl; */
-  /*   std::cout<<"face normal "<<face.normal.transpose() << std::endl << */
-  /*   std::endl; */
-  /* } */
 }
 
 void Flyscene::paintGL(void) {
@@ -273,6 +262,10 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                                    Eigen::Vector3f &dest) {
+  // intersect with bounding box
+  if (!meshHierarchy.intersect(origin, dest))
+    return Eigen::Vector3f(0.0f, 0.0f, 1.0f);
+
   Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
   Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
   Eigen::Vector3f rayDirection = (dest - origin).normalized();

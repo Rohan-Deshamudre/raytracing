@@ -38,7 +38,7 @@ void initialize(void) {
 #endif
 
   flyscene = new Flyscene();
-  flyscene->initialize(WINDOW_WIDTH, WINDOW_HEIGHT);  
+  flyscene->initialize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
   std::cout << endl
             << endl

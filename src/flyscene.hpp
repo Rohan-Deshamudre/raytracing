@@ -16,6 +16,8 @@
 #include <tucano/utils/mtlIO.hpp>
 #include <tucano/utils/objimporter.hpp>
 
+#include "MeshHierarchy.hpp"
+
 class Flyscene {
 
 public:
@@ -56,7 +58,8 @@ public:
    */
   void createDebugRay(const Eigen::Vector2f &mouse_pos);
 
-  void traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to, int maxReflections);
+  void traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
+                     int maxReflections);
 
   /**
    * @brief raytrace your scene from current camera position
@@ -67,9 +70,9 @@ public:
   /**
    * @brief raytrace part of your scene from current camera position
    */
-  void raytracePartScene(vector<vector<Eigen::Vector3f>>& pixel_data,
-                         int width = 0, int height = 0,
-                         int x_start = 0, int x_end = 0);
+  void raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
+                         int width = 0, int height = 0, int x_start = 0,
+                         int x_end = 0);
 
   /**
    * @brief trace a single ray from the camera passing through dest
@@ -107,6 +110,7 @@ private:
 
   // Scene meshes
   Tucano::Mesh mesh;
+  MeshHierarchy meshHierarchy;
 
   /// MTL materials
   vector<Tucano::Material::Mtl> materials;
