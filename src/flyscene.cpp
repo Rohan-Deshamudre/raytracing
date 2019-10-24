@@ -6,57 +6,9 @@
 #include <thread>
 
 #include "intersect.hpp"
+#include "helper.hpp"
 
-float clamp(float v, float min, float max) {
-  if (v < min)
-    return min;
-  if (v > max)
-    return max;
-  return v;
-}
-
-// Reflect ray according to normal
-Eigen::Vector3f reflect(const Eigen::Vector3f &v, const Eigen::Vector3f &n) {
-  return v - 2 * v.dot(n) * n;
-}
-
-Eigen::Vector2f calculateBarycentric(const Eigen::Vector3f &a,
-                                     const Eigen::Vector3f &b,
-                                     const Eigen::Vector3f &c,
-                                     const Eigen::Vector3f &p) {
-  using namespace Eigen;
-
-  Vector3f u = b - a;
-  Vector3f v = c - a;
-  Vector3f w = p - a;
-
-  float uu, uv, vv, wu, wv, D;
-  uu = u.dot(u);
-  uv = u.dot(v);
-  vv = v.dot(v);
-
-  wu = w.dot(u);
-  wv = w.dot(v);
-
-  D = uv * uv - uu * vv;
-
-  float x, y;
-  x = (uv * wv - vv * wu) / D;
-  y = (uv * wu - uu * wv) / D;
-
-  return Vector2f(x, y);
-}
-
-Eigen::Vector3f interpolate(const Eigen::Vector3f &nx,
-                            const Eigen::Vector3f &ny,
-                            const Eigen::Vector3f &nz,
-                            const Eigen::Vector2f &barycentric) {
-  float x, y;
-  x = barycentric(0);
-  y = barycentric(1);
-
-  return x * ny + y * nz + (1.f - x - y) * nx;
-}
+#include "MeshHierarchy.hpp"
 
 void Flyscene::modifyDebugReflection(int change) {
 	if (change > 0 || maxDebugReflections > 1) {
@@ -81,9 +33,10 @@ void Flyscene::initialize(int width, int height) {
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
                                     "resources/models/torus2.obj");
-
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
+  // create mesh hierarchy
+  this->meshHierarchy = MeshHierarchy(mesh);
 
   // pass all the materials to the Phong Shader
   for (int i = 0; i < materials.size(); ++i)
@@ -104,20 +57,6 @@ void Flyscene::initialize(int width, int height) {
   createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 
   glEnable(GL_DEPTH_TEST);
-
-  /* for (int i = 0; i<mesh.getNumberOfFaces(); ++i){ */
-  /*   Tucano::Face face = mesh.getFace(i); */
-  /*   for (int j =0; j<face.vertex_ids.size(); ++j){ */
-  /*     std::cout<<"vid "<<j<<" "<<face.vertex_ids[j]<<std::endl; */
-  /*     std::cout<<"vertex"<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl;
-   */
-  /*     std::cout<<"normal"<<mesh.getNormal(face.vertex_ids[j]).transpose()<<std::endl;
-   */
-  /*   } */
-  /*   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl; */
-  /*   std::cout<<"face normal "<<face.normal.transpose() << std::endl << */
-  /*   std::endl; */
-  /* } */
 }
 
 void Flyscene::paintGL(void) {
@@ -332,6 +271,10 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                                    Eigen::Vector3f &dest) {
+  // intersect with bounding box
+  if (!meshHierarchy.intersect(origin, dest))
+    return Eigen::Vector3f(0.0f, 0.0f, 1.0f);
+
   Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
   Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
   Eigen::Vector3f rayDirection = (dest - origin).normalized();
