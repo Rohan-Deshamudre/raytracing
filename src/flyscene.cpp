@@ -178,7 +178,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
   Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
 
   // position and orient the cylinder representing the ray
-  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 2);
+  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, 10);
 
   // place the camera representation (frustum) on current camera location,
   camerarep.resetModelMatrix();

@@ -10,13 +10,11 @@ public:
   MeshHierarchy(const Tucano::Mesh &mesh) {
     this->mesh = mesh;
     buildUp();
-
-    std::cout << min << std::endl << max << std ::endl;
   }
 
   bool intersect(const Eigen::Vector3f &origin,
                  const Eigen::Vector3f &direction) {
-    return Intersect::box(origin, direction, min, max);
+    return Intersect::box(origin, direction, this->box.min, this->box.max);
   }
 
 protected:
@@ -25,8 +23,8 @@ protected:
 
     float minf = std::numeric_limits<float>::min();
     float maxf = std::numeric_limits<float>::max();
-    min = Eigen::Vector3f(maxf, maxf, maxf);
-    max = Eigen::Vector3f(minf, minf, minf);
+    Eigen::Vector3f min = Eigen::Vector3f(maxf, maxf, maxf);
+    Eigen::Vector3f max = Eigen::Vector3f(minf, minf, minf);
 
     int vertexCount = mesh.getNumberOfVertices();
     for (int i = 0; i < vertexCount; i++) {
@@ -48,13 +46,22 @@ protected:
         min(2) = vertex(2);
     }
 
-    this->min = min;
-    this->max = max;
+    this->box.min = min;
+    this->box.max = max;
   }
 
 private:
   Tucano::Mesh mesh;
 
-  Eigen::Vector3f min;
-  Eigen::Vector3f max;
+  typedef struct BoundingBox {
+    Eigen::Vector3f min;
+    Eigen::Vector3f max;
+
+    std::vector<int> faceIndices;
+
+    BoundingBox *left;
+    BoundingBox *right;
+  } BoundingBox;
+
+  BoundingBox box;
 };
