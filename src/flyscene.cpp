@@ -68,7 +68,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/cubes.obj");
+                                    "resources/models/toy.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -93,6 +93,11 @@ void Flyscene::initialize(int width, int height) {
 
   glEnable(GL_DEPTH_TEST);
 
+  
+
+  Flyscene::initTheBoundingBox(mesh);
+
+
   /* for (int i = 0; i<mesh.getNumberOfFaces(); ++i){ */
   /*   Tucano::Face face = mesh.getFace(i); */
   /*   for (int j =0; j<face.vertex_ids.size(); ++j){ */
@@ -107,6 +112,122 @@ void Flyscene::initialize(int width, int height) {
   /*   std::endl; */
   /* } */
 }
+
+void Flyscene::initTheBoundingBox(Tucano::Mesh mesh) {
+	Eigen::Vector4f static min = mesh.getVertex(0);
+	Eigen::Vector4f static max = mesh.getVertex(0);
+
+	for (int i = 0; i < mesh.getNumberOfVertices(); ++i) {
+		Eigen::Vector4f current = mesh.getVertex(i);
+		for (int j = 0; j < 3; j++) {
+			if (current[j] < min[j]) {
+				min[j] = current[j];
+
+			}
+		}
+
+		for (int j = 0; j < 3; j++) {
+			if (current[j] > max[j]) {
+				max[j] = current[j];
+
+			}
+		}
+	}
+
+	minPoint = min;
+	maxPoint = max;
+
+	std::cout << "This is the first bounding box: " << std::endl;
+	std::cout << "The min value: " << std::endl << minPoint << std::endl;
+	std::cout << "The max value: " << std::endl << maxPoint << std::endl;
+	//to here we have the main big box 
+
+
+	Eigen::Vector4f maxLeft;
+	Eigen::Vector4f minRight;
+
+	//Split according the longest axis.
+	float xDif = maxPoint[0] - minPoint[0];
+	float yDif = maxPoint[1] - minPoint[1];
+	float zDif = maxPoint[2] - minPoint[2];
+	if (xDif == std::max(xDif, yDif) && xDif == std::max(xDif, zDif)){
+
+		//x is the longest axis.
+		minRight[0] = minPoint[0] + ((maxPoint[0] - minPoint[0]) / 2);
+		minRight[1] = minPoint[1];
+		minRight[2] = minPoint[2];
+
+
+		maxLeft[0] = minPoint[0] + ((maxPoint[0] - minPoint[0]) / 2);
+		maxLeft[1] = maxPoint[1];
+		maxLeft[2] = maxPoint[2];
+
+
+	}
+	else if (yDif == std::max(xDif, yDif) && yDif == std::max(yDif, zDif)) {
+
+		//y is the longest axis.
+		minRight[0] = minPoint[0];
+		minRight[1] = minPoint[1] + ((maxPoint[1] - minPoint[1]) / 2);
+		minRight[2] = minPoint[2];
+
+
+		maxLeft[0] = maxPoint[0];
+		maxLeft[1] = minPoint[1] + ((maxPoint[1] - minPoint[1]) / 2);
+		maxLeft[2] = maxPoint[2];
+
+
+	}
+	else if (zDif == std::max(xDif, zDif) && zDif == std::max(yDif, zDif)) {
+		
+		//z is the longest axis.
+		minRight[0] = minPoint[0];
+		minRight[1] = minPoint[1];
+		minRight[2] = minPoint[2] + ((maxPoint[2] - minPoint[2]) / 2);
+
+
+		maxLeft[0] = maxPoint[0];
+		maxLeft[1] = maxPoint[1];
+		maxLeft[2] = minPoint[2] + ((maxPoint[2] - minPoint[2]) / 2);
+
+
+	}
+	//to here we have 2 boxes
+
+	int num_faces = mesh.getNumberOfFaces();
+	for (int i = 0; i < num_faces; ++i) {
+		Tucano::Face face = mesh.getFace(i);
+	
+		if (hasVertexInBox(i, minPoint, maxLeft) && hasVertexInBox(i, minRight, maxPoint)) {//in both boxes
+			
+		}
+		else if (hasVertexInBox(i, minPoint, maxLeft)) {//in left box
+			
+		}
+		else if (hasVertexInBox(i, minRight, maxPoint)) {//in right box
+			
+		}
+
+		
+	}
+}
+
+bool Flyscene::hasVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax) {
+	Tucano::Face face = mesh.getFace(triangleIndex);
+	for (int i = 0; i < 3; i++) {
+		if (isVertexInBox(mesh.getVertex[face.vertex_ids.at(i)], _boxMin, _boxMax)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Flyscene::isVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax) {
+	return mesh.getVertex(triangleIndex)[0] >= _boxMin[0] && mesh.getVertex(triangleIndex)[0] <= _boxMax[0] &&
+		mesh.getVertex(triangleIndex)[1] >= _boxMin[1] && mesh.getVertex(triangleIndex)[1] <= _boxMax[1] &&
+		mesh.getVertex(triangleIndex)[2] >= _boxMin[2] && mesh.getVertex(triangleIndex)[2] <= _boxMax[2];
+}
+
 
 void Flyscene::paintGL(void) {
 

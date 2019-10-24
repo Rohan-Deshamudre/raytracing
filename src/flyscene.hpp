@@ -83,6 +83,11 @@ public:
 
   static bool isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eigen::Vector3f vertice2, Eigen::Vector3f vertice3);
 
+  bool isVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax);
+  void initTheBoundingBox(Tucano::Mesh mesh);
+
+  bool hasVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax);
+
 
 private:
 
@@ -116,6 +121,11 @@ private:
 
   /// MTL materials
   vector<Tucano::Material::Mtl> materials;
+
+  ///min and max points for the bounding box
+  Eigen::Vector4f minPoint;
+  Eigen::Vector4f maxPoint;
+
 };
 
 #endif // FLYSCENE
