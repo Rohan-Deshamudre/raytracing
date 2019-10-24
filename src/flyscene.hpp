@@ -119,6 +119,9 @@ private:
 
   bool lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,
                     Eigen::Vector3f lightPos);
+  float lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin);
+
+  vector<Eigen::Vector3f> create_points(float radius, int times, Eigen::Vector3f pos, Eigen::Vector3f dir);
 };
 
 #endif // FLYSCENE

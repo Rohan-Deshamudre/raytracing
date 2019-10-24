@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <limits>
 #include <thread>
-
+#include <random>
 #include "intersect.hpp"
 
 float clamp(float v, float min, float max) {
@@ -68,7 +68,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/torus2.obj");
+                                    "resources/models/Torus2.obj");
 
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
@@ -307,7 +307,9 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
 
   // for every pixel shoot a ray from the origin through the pixel coords
   for (int j = x_start; j < x_end; ++j) {
+	  std::cout << j << std::endl;
     for (int i = 0; i < height; ++i) {
+	  
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
@@ -359,6 +361,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
   // Shading
   if (minDist < std::numeric_limits<float>::max()) {
     auto material = materials[closestFace.material_id];
+	Eigen::Vector3f ka = material.getAmbient();
     Eigen::Vector3f kd = material.getDiffuse();
     Eigen::Vector3f ks = material.getSpecular();
     float shininess = material.getShininess();
@@ -384,13 +387,12 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
     Eigen::Vector3f specular = Eigen::Vector3f(0.0, 0.0, 0.0);
 
     for (auto light : lights) {
-      Eigen::Vector3f lightColour = Eigen::Vector3f(1.0, 1.0, 1.0);
+	  Eigen::Vector3f rayVector = closestIntersect - origin;
+	  float ratio = lightRatio(0.018, 24, light, closestFace, closestIntersect - 0.01f * rayVector);
+      Eigen::Vector3f lightColour = Eigen::Vector3f(1.0, 1.0, 1.0) * ratio;
 
-      Eigen::Vector3f rayVector = closestIntersect - origin;
 
       // check if in shadow
-      if (!lightBlocked(closestFace, closestIntersect - 0.001f * rayVector,
-                        light)) {
         Eigen::Vector3f toLight = light - closestIntersect;
         Eigen::Vector3f toLightUnit = toLight.normalized();
         float lightDistance = toLight.norm();
@@ -402,16 +404,14 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                    lightDistance;
         specular += ks.cwiseProduct(lightColour) *
                     pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
-      }
     }
 
-    return diffuse + specular;
+    return ka + diffuse + specular;
   }
 
   // no intersection
   return Eigen::Vector3f(0.95f, 0.95f, 0.95f);
 }
-
 bool Flyscene::lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,
                             Eigen::Vector3f lightPos) {
   Eigen::Vector3f intersect;
@@ -428,7 +428,7 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f orig
         (face.vertex_ids[2] == originFace.vertex_ids[2]))
       continue;
 
-    // Assume a triangle
+    // Assume a trianglew
     Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
     Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
     Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
@@ -445,4 +445,33 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f orig
   }
 
   return false;
+}
+
+float Flyscene::lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin) {
+	vector<Eigen::Vector3f> points = create_points(radius, times, lightpos, lightpos-origin);
+	float count = times;
+	for (Eigen::Vector3f point : points) {
+		count -= lightBlocked(originFace, origin, point);
+	}
+	return count / times;
+}
+vector<Eigen::Vector3f> Flyscene::create_points(float radius, int times, Eigen::Vector3f pos, Eigen::Vector3f dir) {
+	float a, b;
+	vector<Eigen::Vector3f> ret;
+	Eigen::Vector3f e1 = (dir.unitOrthogonal() + pos).normalized();
+	Eigen::Vector3f e2 = (e1.cross(dir) + pos).normalized();
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<> dis(-radius, radius);
+	for (int i = 0; i < times; i++) {
+		do {
+			a = dis(gen);
+			b = dis(gen);
+		} while (sqrt(pow(a, 2) + pow(b, 2)) < radius);
+
+
+		ret.push_back(pos + a*e1 + b*e2);
+		
+	}
+	return ret;
 }
