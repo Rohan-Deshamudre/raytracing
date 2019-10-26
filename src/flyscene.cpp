@@ -30,7 +30,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/hedron.obj");
+                                    "resources/models/torus2.obj");
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
   // create mesh hierarchy
@@ -98,18 +98,18 @@ void Flyscene::simulate(GLFWwindow *window) {
   // Update the camera.
   // NOTE(mickvangelderen): GLFW 3.2 has a problem on ubuntu where some key
   // events are repeated: https://github.com/glfw/glfw/issues/747. Sucks.
-  float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 1.0 : 0.0) -
-             (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ? 1.0 : 0.0);
+  float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 0.1 : 0.0) -
+             (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ? 0.1 : 0.0);
   float dy = (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS ||
                       glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS
-                  ? 1.0
+                  ? 0.1
                   : 0.0) -
              (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS ||
                       glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS
-                  ? 1.0
+                  ? 0.1
                   : 0.0);
-  float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 1.0 : 0.0) -
-             (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 1.0 : 0.0);
+  float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 0.1 : 0.0) -
+             (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 0.1 : 0.0);
   flycamera.translate(dx, dy, dz);
 }
 
