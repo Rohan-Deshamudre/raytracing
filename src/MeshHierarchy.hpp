@@ -6,7 +6,7 @@
 
 class MeshHierarchy {
 private:
-  static const int MAX_DEPTH = 2;
+  static const int MAX_DEPTH = 10;
   static const int MIN_TRIANGLES = 5;
 
   typedef struct BoundingBox {
@@ -21,6 +21,10 @@ private:
     BoundingBox *more;
   } BoundingBox;
 
+  BoundingBox* box;
+
+  Tucano::Mesh mesh;
+
 public:
   MeshHierarchy() {}
   MeshHierarchy(const Tucano::Mesh &mesh) {
@@ -32,25 +36,61 @@ public:
       faces->push_back(i);
     }
 
-    buildUp(this->box, 0, faces);
+    box = new BoundingBox();
+    buildUp(box, 0, faces);
+
+    std::cout << box->min << std::endl << box->max << std::endl;
+    std::cout << box->less->min << std::endl << box->less->max << std::endl;
+    std::cout << box->more->min << std::endl << box->more->max << std::endl;
   }
 
   bool intersect(const Eigen::Vector3f &origin,
                  const Eigen::Vector3f &point,
                  Tucano::Face **outFace,
                  Eigen::Vector3f **outIntersect) {
-    Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
+    return intersectBoundingBox(box, origin, point, outFace, outIntersect);
+  }
+
+protected:
+  bool intersectBoundingBox(BoundingBox* box,
+      const Eigen::Vector3f &origin, const Eigen::Vector3f &point,
+      Tucano::Face **outFace, Eigen::Vector3f **outIntersect)
+  {
+    const Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
 
     if (!Intersect::box(origin, point, shapeMatrix * this->box->min, shapeMatrix * this->box->max))
       return false;
+
+    if (box->less != nullptr) {
+      if (!Intersect::box(origin, point, shapeMatrix * this->box->less->min, shapeMatrix * this->box->less->max))
+        return false;
+
+      return intersectBoundingBox(box->less, origin, point, outFace, outIntersect);
+    }
+    if (box->more != nullptr) {
+      if (!Intersect::box(origin, point, shapeMatrix * this->box->more->min, shapeMatrix * this->box->more->max))
+        return false;
+
+      return intersectBoundingBox(box->more, origin, point, outFace, outIntersect);
+    }
+
+    return intersectGeometry(this->box->faces, origin, point, outFace, outIntersect);
+  }
+
+  bool intersectGeometry(std::vector<int>* faces,
+      const Eigen::Vector3f &origin,
+      const Eigen::Vector3f &point,
+      Tucano::Face **outFace,
+      Eigen::Vector3f **outIntersect)
+  {
+    const Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
 
     Tucano::Face closestFace;
     Eigen::Vector3f closestIntersect;
     float minDist = std::numeric_limits<float>::max();
 
     // Loop over all faces
-    int num_faces = mesh.getNumberOfFaces();
-    for (int i = 0; i < num_faces; ++i) {
+    for (int i : *faces) {
       Eigen::Vector3f intersect;
 
       Tucano::Face face = mesh.getFace(i);
@@ -81,12 +121,10 @@ public:
     return false;
   }
 
-protected:
   void buildUp(BoundingBox *box, int level, std::vector<int>* faces) {
     if (level >= MAX_DEPTH)
       return;
 
-    box = new BoundingBox();
     box->level = level;
     box->faces = faces;
 
@@ -108,29 +146,75 @@ protected:
       updateMinMax(&(box->min), &(box->max), &vert3);
     }
 
+    // Don't split if reached min limit
+    if (box->faces->size() <= MIN_TRIANGLES)
+      return;
+
     // get split axis
     float xspan = fabs(box->min.x() - box->max.x());
     float yspan = fabs(box->min.y() - box->max.y());
     float zspan = fabs(box->min.z() - box->max.z());
     float span = std::max(xspan, std::max(yspan, zspan));
 
-    std::cout << box->min << std::endl << box->max << std::endl;
+    Eigen::Vector3f mid = (box->max + box->min) * 0.5f;
 
     std::vector<int> *less = new std::vector<int>();
     std::vector<int> *more = new std::vector<int>();
 
     if (xspan == span) {
-
+      splitByAxis(faces, mid, Eigen::Vector3f(1.0, 0.0, 0.0), less, more);
     }
     else if (yspan == span) {
-
+      splitByAxis(faces, mid, Eigen::Vector3f(0.0, 1.0, 0.0), less, more);
     }
     else if (zspan == span) {
+      splitByAxis(faces, mid, Eigen::Vector3f(0.0, 0.0, 1.0), less, more);
+    }
 
+    // recurse if has geometry
+    if (!less->empty()) {
+      box->less = new BoundingBox();
+      buildUp(box->less, level + 1, less);
+    }
+    if (!more->empty()) {
+      box->more = new BoundingBox();
+      buildUp(box->more, level + 1, more);
     }
   }
 
 private:
+  void splitByAxis(std::vector<int> *faces, const Eigen::Vector3f &mid,
+      const Eigen::Vector3f &normal, std::vector<int> *less, std::vector<int> *more) {
+    using namespace Eigen;
+
+    for (int i : *faces) {
+      Tucano::Face face = mesh.getFace(i);
+      // Assume a triangle
+      Vector4f vert1 = mesh.getVertex(face.vertex_ids[0]);
+      Vector4f vert2 = mesh.getVertex(face.vertex_ids[1]);
+      Vector4f vert3 = mesh.getVertex(face.vertex_ids[2]);
+
+      Vector3f m1 = vert1.head<3>() - mid;
+      Vector3f m2 = vert2.head<3>() - mid;
+      Vector3f m3 = vert3.head<3>() - mid;
+
+      float dot1 = m1.dot(normal);
+      float dot2 = m2.dot(normal);
+      float dot3 = m3.dot(normal);
+
+      if (dot1 < 0.f && dot2 < 0.f && dot3 < 0.f) {
+        less->push_back(i);
+      }
+      else if (dot1 > 0.f && dot2 > 0.f && dot3 > 0.f) {
+        more->push_back(i);
+      }
+      else {
+        less->push_back(i);
+        more->push_back(i);
+      }
+    }
+  }
+
   void updateMinMax(Eigen::Vector3f *min, Eigen::Vector3f *max,
       Eigen::Vector4f *vertex) {
     if (vertex->x() > max->x())
@@ -147,8 +231,5 @@ private:
     if (vertex->z() < min->z())
       (*min)(2) = vertex->z();
   }
-
-  Tucano::Mesh mesh;
-
-  BoundingBox* box;
 };
+
