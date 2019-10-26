@@ -16,10 +16,11 @@ public:
                  const Eigen::Vector3f &point,
                  Tucano::Face **outFace,
                  Eigen::Vector3f **outIntersect) {
-    if (!Intersect::box(origin, point, this->box.min, this->box.max))
-      return false;
 
-    Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+    Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
+
+    if (!Intersect::box(origin, point, shapeMatrix * this->box->min, shapeMatrix * this->box->max))
+      return false;
 
     Tucano::Face closestFace;
     Eigen::Vector3f closestIntersect;
@@ -60,48 +61,54 @@ public:
 
 protected:
   void buildUp() {
-    Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
+    box = new BoundingBox();
 
-    float minf = std::numeric_limits<float>::min();
-    float maxf = std::numeric_limits<float>::max();
-    Eigen::Vector3f min = Eigen::Vector3f(maxf, maxf, maxf);
-    Eigen::Vector3f max = Eigen::Vector3f(minf, minf, minf);
+    constexpr float minf = std::numeric_limits<float>::min();
+    constexpr float maxf = std::numeric_limits<float>::max();
+    box->min = Eigen::Vector3f(maxf, maxf, maxf);
+    box->max = Eigen::Vector3f(minf, minf, minf);
 
-    int vertexCount = mesh.getNumberOfVertices();
-    for (int i = 0; i < vertexCount; i++) {
-      Eigen::Vector4f vertex = shapeMatrix * mesh.getVertex(i);
-      vertex /= vertex.w();
+    int num_faces = mesh.getNumberOfFaces();
+    for (int i = 0; i < num_faces; ++i) {
+      Tucano::Face face = mesh.getFace(i);
+      // Assume a triangle
+      Eigen::Vector4f vert1 = mesh.getVertex(face.vertex_ids[0]);
+      Eigen::Vector4f vert2 = mesh.getVertex(face.vertex_ids[1]);
+      Eigen::Vector4f vert3 = mesh.getVertex(face.vertex_ids[2]);
 
-      if (vertex(0) > max(0))
-        max(0) = vertex(0);
-      if (vertex(1) > max(1))
-        max(1) = vertex(1);
-      if (vertex(2) > max(2))
-        max(2) = vertex(2);
-
-      if (vertex(0) < min(0))
-        min(0) = vertex(0);
-      if (vertex(1) < min(1))
-        min(1) = vertex(1);
-      if (vertex(2) < min(2))
-        min(2) = vertex(2);
+      updateMinMax(&(box->min), &(box->max), &vert1);
+      updateMinMax(&(box->min), &(box->max), &vert2);
+      updateMinMax(&(box->min), &(box->max), &vert3);
     }
-
-    this->box.min = min;
-    this->box.max = max;
   }
 
 private:
+  void updateMinMax(Eigen::Vector3f *min, Eigen::Vector3f *max, Eigen::Vector4f *vertex) {
+    if (vertex->x() > max->x())
+      (*max)(0) = vertex->x();
+    if (vertex->y() > max->y())
+      (*max)(1) = vertex->y();
+    if (vertex->z() > max->z())
+      (*max)(2) = vertex->z();
+
+    if (vertex->x() < min->x())
+      (*min)(0) = vertex->x();
+    if (vertex->y() < min->y())
+      (*min)(1) = vertex->y();
+    if (vertex->z() < min->z())
+      (*min)(2) = vertex->z();
+  }
+
   Tucano::Mesh mesh;
 
   typedef struct BoundingBox {
     Eigen::Vector3f min;
     Eigen::Vector3f max;
 
-    std::vector<int> faceIndices;
+    std::vector<int> faces;
 
     BoundingBox *left;
     BoundingBox *right;
   } BoundingBox;
-  BoundingBox box;
+  BoundingBox* box;
 };
