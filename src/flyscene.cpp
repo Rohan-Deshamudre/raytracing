@@ -135,7 +135,6 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
     Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
     Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
 
-
     // Intersect + set calculate distance
     if (Intersect::triangle(from, to, vert1.head<3>() / vert1.w(),
                             vert2.head<3>() / vert2.w(),
