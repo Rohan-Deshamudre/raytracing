@@ -1,5 +1,13 @@
 #pragma once
 
+inline Eigen::Vector3f Flyscene::min(Eigen::Vector3f a, Eigen::Vector3f b) {
+	double x = std::min(a.x(), b.x());
+	double y = std::min(a.y(), b.y());
+	double z = std::min(a.z(), b.z());
+
+	return Eigen::Vector3f(x, y, z);
+}
+
 inline float clamp(float v, float min, float max) {
   if (v < min)
     return min;
