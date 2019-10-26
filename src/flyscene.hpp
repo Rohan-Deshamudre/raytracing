@@ -76,13 +76,19 @@ public:
                          int width = 0, int height = 0, int x_start = 0,
                          int x_end = 0);
 
+  Eigen::Vector3f calculateShading(const Tucano::Face& face,
+    const Eigen::Vector3f& point, const Eigen::Vector3f& surfaceNormal,
+    const Eigen::Vector3f& origin, const Eigen::Vector3f& rayDirection,
+    int levels, bool isReflected);
+
   /**
    * @brief trace a single ray from the camera passing through dest
    * @param origin Ray origin
    * @param dest Other point on the ray, usually screen coordinates
    * @return a RGB color
    */
-  Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest, int levels, bool isReflected);
+  Eigen::Vector3f traceRay(const Eigen::Vector3f &origin,
+      const Eigen::Vector3f &dest, int levels, bool isReflected);
 
 
   Eigen::Vector3f min(Eigen::Vector3f a, Eigen::Vector3f b);
