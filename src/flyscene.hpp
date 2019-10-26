@@ -16,6 +16,8 @@
 #include <tucano/utils/mtlIO.hpp>
 #include <tucano/utils/objimporter.hpp>
 
+#include "MeshHierarchy.hpp"
+
 class Flyscene {
 
 public:
@@ -56,7 +58,10 @@ public:
    */
   void createDebugRay(const Eigen::Vector2f &mouse_pos);
 
-  void traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to, int maxReflections);
+  void traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
+                     int maxReflections);
+
+  void modifyDebugReflection(int change);
 
   /**
    * @brief raytrace your scene from current camera position
@@ -67,9 +72,14 @@ public:
   /**
    * @brief raytrace part of your scene from current camera position
    */
-  void raytracePartScene(vector<vector<Eigen::Vector3f>>& pixel_data,
-                         int width = 0, int height = 0,
-                         int x_start = 0, int x_end = 0);
+  void raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
+                         int width = 0, int height = 0, int x_start = 0,
+                         int x_end = 0);
+
+  Eigen::Vector3f calculateShading(const Tucano::Face& face,
+    const Eigen::Vector3f& point, const Eigen::Vector3f& surfaceNormal,
+    const Eigen::Vector3f& origin, const Eigen::Vector3f& rayDirection,
+    int levels, bool isReflected);
 
   /**
    * @brief trace a single ray from the camera passing through dest
@@ -77,7 +87,11 @@ public:
    * @param dest Other point on the ray, usually screen coordinates
    * @return a RGB color
    */
-  Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
+  Eigen::Vector3f traceRay(const Eigen::Vector3f &origin,
+      const Eigen::Vector3f &dest, int levels, bool isReflected);
+
+
+  Eigen::Vector3f min(Eigen::Vector3f a, Eigen::Vector3f b);
 
   static bool planeIntersection(Eigen::Vector3f& origin, Eigen::Vector3f dir, Eigen::Vector3f norm, Eigen::Vector3f point, Eigen::Vector3f& intersect);
 
@@ -85,6 +99,8 @@ public:
 
 
 private:
+
+	int maxDebugReflections;
 
   // A simple phong shader for rendering meshes
   Tucano::Effects::PhongMaterial phong;
@@ -113,9 +129,13 @@ private:
 
   // Scene meshes
   Tucano::Mesh mesh;
+  MeshHierarchy meshHierarchy;
 
   /// MTL materials
   vector<Tucano::Material::Mtl> materials;
+
+  bool lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,
+                    Eigen::Vector3f lightPos);
 };
 
 #endif // FLYSCENE

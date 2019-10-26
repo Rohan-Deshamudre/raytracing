@@ -1,0 +1,25 @@
+# Blender MTL File: 'torus.blend'
+# Material Count: 4
+
+newmtl Material.001
+illum 2
+Kd 0.00 0.80 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+
+newmtl Material.002
+illum 2
+Kd 0.80 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+
+newmtl None
+illum 2
+Kd 0.80 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+
+newmtl reflective
+illum 3
+Kd 0.00 0.00 0.80
+Tf 1.00 1.00 1.00

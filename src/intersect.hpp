@@ -1,3 +1,7 @@
+#pragma once
+
+#include <limits>
+
 namespace Intersect {
 
 using namespace Eigen;
@@ -51,11 +55,39 @@ inline bool triangle(Vector3f rayOrigin, Vector3f rayPoint,
     if (y < 0.0 || (x + y) > 1.0)
         return false;
 
-    return true;                   // I is in T
+    return true;
   }
   else {
     return false;
   }
 }
 
+inline bool box(const Eigen::Vector3f &origin, const Eigen::Vector3f &point,
+                Vector3f bmin, Vector3f bmax) {
+  using namespace Eigen;
+
+  Vector3f direction = point - origin;
+
+  Vector3f invD =
+      Vector3f(1.f / direction.x(), 1.f / direction.y(), 1.f / direction.z());
+
+  Vector3f t0s = (bmin - origin).cwiseProduct(invD);
+  Vector3f t1s = (bmax - origin).cwiseProduct(invD);
+
+  Vector3f tsmaller =
+      Vector3f(std::min(t0s.x(), t1s.x()), std::min(t0s.y(), t1s.y()),
+               std::min(t0s.z(), t1s.z()));
+  Vector3f tbigger =
+      Vector3f(std::max(t0s.x(), t1s.x()), std::max(t0s.y(), t1s.y()),
+               std::max(t0s.z(), t1s.z()));
+
+  float tmin = std::numeric_limits<float>::min();
+  float tmax = std::numeric_limits<float>::max();
+  tmin = std::max(tmin,
+                  std::max(tsmaller.x(), std::max(tsmaller.y(), tsmaller.z())));
+  tmax =
+      std::min(tmax, std::min(tbigger.x(), std::min(tbigger.y(), tbigger.z())));
+
+  return (tmin < tmax);
+}
 } // namespace Intersect
