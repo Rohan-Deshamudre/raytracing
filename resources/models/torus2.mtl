@@ -5,16 +5,14 @@ newmtl Material.001
 illum 2
 Kd 0.00 0.80 0.00
 Ka 0.00 0.00 0.00
-Tf 1.00 1.00 1.00
 
 newmtl Material.002
 illum 2
 Kd 0.80 0.00 0.00
 Ka 0.00 0.00 0.00
-Tf 1.00 1.00 1.00
 
 newmtl Material.003
 illum 3
 Kd 0.00 0.00 0.80
-Tf 1.00 1.00 1.00
-
+Ks 1.0 1.0 1.0
+Ns 1

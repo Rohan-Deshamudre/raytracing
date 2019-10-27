@@ -30,7 +30,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/dodgeColorTest.obj");
+                                    "resources/models/torus2.obj");
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
   // create mesh hierarchy
@@ -230,7 +230,7 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
-      Eigen::Vector3f raw = traceRay(origin, screen_coords, 10, false);
+      Eigen::Vector3f raw = traceRay(origin, screen_coords, 20, false);
 
       // gamma 2 correction
       pixel_data[i][j] = Eigen::Vector3f(sqrt(clamp(raw(0), 0.f, 1.f)),
@@ -246,7 +246,7 @@ Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
   using namespace Eigen;
 
   const Vector3f background = Vector3f(0.95f, 0.95f, 0.95f);
-  const Vector3f outOfReflections = Vector3f(1.f, 0.f, 1.f);
+  const Vector3f outOfReflections = Vector3f(0.f, 0.f, 0.f);
 
 	if (levels <= 0) {
 		return outOfReflections;
@@ -327,8 +327,10 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     return diffuse + specular;
 
   case 3:
-    return diffuse + traceRay(intersect + 0.001f * surfaceNormal,
-        intersect + reflectedVector, levels - 1, true);
+    return diffuse + ks.cwiseProduct(
+      traceRay(intersect + 0.001f * surfaceNormal,
+          intersect + reflectedVector,
+          levels - 1, true).array().pow(shininess).matrix());
 
   default:
     return Eigen::Vector3f(0.0, 0.0, 0.0);
