@@ -6,7 +6,7 @@
 
 class MeshHierarchy {
 private:
-  static const int MAX_DEPTH = 15;
+  static const int MAX_DEPTH = 12;
   static const int MIN_TRIANGLES = 20;
 
   typedef struct BoundingBox {
@@ -23,6 +23,23 @@ private:
 
   BoundingBox* box;
 
+  void printBoundingBox(BoundingBox *box) {
+    using namespace std;
+
+    if(box->faces == nullptr || box->faces->empty())
+      return;
+
+    cout << "### BoundingBox " << endl;
+    cout << "Level: " << box->level << endl;
+    cout << box->min << box->max << endl;
+    cout << box->faces->size() << endl << endl;
+
+    if (box->less != nullptr)
+      printBoundingBox(box->less);
+    if (box->more != nullptr)
+      printBoundingBox(box->more);
+  }
+
   Tucano::Mesh mesh;
 
 public:
@@ -38,6 +55,7 @@ public:
 
     box = new BoundingBox();
     buildUp(box, 0, faces);
+    /* printBoundingBox(box); */
   }
 
   bool intersect(const Eigen::Vector3f &origin,
@@ -166,10 +184,6 @@ protected:
     else if (zspan == span) {
       splitByAxis(faces, mid, Eigen::Vector3f(0.0, 0.0, 1.0), less, more);
     }
-
-    /* // release faces stored for sub-box exists */
-    /* if (!less->empty() || !more->empty()) */
-    /*   delete box->faces; */
 
     // recurse if has geometry
     if (!less->empty()) {
