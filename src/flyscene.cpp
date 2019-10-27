@@ -30,7 +30,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/hedron.obj");
+                                    "resources/models/chess.obj");
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
   // create mesh hierarchy
@@ -46,7 +46,7 @@ void Flyscene::initialize(int width, int height) {
   lightrep.setSize(0.15);
 
   // create a first ray-tracing light source at some random position
-  lights.push_back(Eigen::Vector3f(-1.0, 1.0, 1.0));
+  lights.push_back(Eigen::Vector3f(0.0, 1.5, 0.0));
 
   // scale the camera representation (frustum) for the ray debug
   camerarep.shapeMatrix()->scale(0.2);
@@ -98,18 +98,18 @@ void Flyscene::simulate(GLFWwindow *window) {
   // Update the camera.
   // NOTE(mickvangelderen): GLFW 3.2 has a problem on ubuntu where some key
   // events are repeated: https://github.com/glfw/glfw/issues/747. Sucks.
-  float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 1.0 : 0.0) -
-             (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ? 1.0 : 0.0);
+  float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 0.2 : 0.0) -
+             (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ? 0.2 : 0.0);
   float dy = (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS ||
                       glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS
-                  ? 1.0
+                  ? 0.2
                   : 0.0) -
              (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS ||
                       glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS
-                  ? 1.0
+                  ? 0.2
                   : 0.0);
-  float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 1.0 : 0.0) -
-             (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 1.0 : 0.0);
+  float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 0.2 : 0.0) -
+             (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 0.2 : 0.0);
   flycamera.translate(dx, dy, dz);
 }
 
@@ -120,42 +120,14 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
   Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
   Eigen::Vector3f rayDirection = (to - from).normalized();
 
-  Tucano::Face closestFace;
-  Eigen::Vector3f closestIntersect;
-  float minDist = std::numeric_limits<float>::max();
-
-  Eigen::Vector3f intersect;
-
-  // Loop over all faces
-  int num_faces = mesh.getNumberOfFaces();
-  for (int i = 0; i < num_faces; ++i) {
-    Tucano::Face face = mesh.getFace(i);
-    // Assume a triangle
-    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
-
-
-    // Intersect + set calculate distance
-    if (Intersect::triangle(from, to, vert1.head<3>() / vert1.w(),
-                            vert2.head<3>() / vert2.w(),
-                            vert3.head<3>() / vert3.w(), intersect)) {
-      Eigen::Vector3f distVector = intersect - from;
-      float dist = distVector.norm();
-      if (dist < minDist && distVector.dot(to - from) > 0.f) {
-        minDist = dist;
-        closestFace = face;
-        closestIntersect = intersect;
-      }
-    }
-  }
-
-  if (minDist < std::numeric_limits<float>::max()) {
-    // intersection
+  Tucano::Face *closestFace;
+  Eigen::Vector3f *closestIntersect;
+  if (meshHierarchy.intersect(from, to, &closestFace, &closestIntersect)) {
+    Eigen::Vector3f rayVector = *closestIntersect - from;
+    float minDist = rayVector.norm();
 
     // calculating reflection
-    Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace.normal);
-    float length = 3; // should be minDist
+    Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace->normal);
     Tucano::Shapes::Cylinder ray =
         Tucano::Shapes::Cylinder(0.01, minDist, 16, 64);
 
@@ -163,13 +135,11 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
     ray.setOriginOrientation(from, rayDirection);
     debugRays.push_back(ray);
     if (maxReflections > 1) {
-      traceDebugRay(closestIntersect + reflectDir * 0.001f,
-                    closestIntersect + reflectDir, maxReflections - 1);
-    } else {
-      // should draw most recent ray
+      traceDebugRay(*closestIntersect + reflectDir * 0.001f,
+                    *closestIntersect + reflectDir, maxReflections - 1);
     }
-  } else {
-    // no intersection
+  }
+  else {
     Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.01, 42, 16, 64);
     ray.resetModelMatrix();
     ray.setOriginOrientation(from, rayDirection);
@@ -260,7 +230,7 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
-      Eigen::Vector3f raw = traceRay(origin, screen_coords, 10, false);
+      Eigen::Vector3f raw = traceRay(origin, screen_coords, 20, false);
 
       // gamma 2 correction
       pixel_data[i][j] = Eigen::Vector3f(sqrt(clamp(raw(0), 0.f, 1.f)),
@@ -276,7 +246,7 @@ Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
   using namespace Eigen;
 
   const Vector3f background = Vector3f(0.95f, 0.95f, 0.95f);
-  const Vector3f outOfReflections = Vector3f(1.f, 0.f, 1.f);
+  const Vector3f outOfReflections = Vector3f(0.f, 0.f, 0.f);
 
 	if (levels <= 0) {
 		return outOfReflections;
@@ -357,8 +327,10 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     return diffuse + specular;
 
   case 3:
-    return diffuse + traceRay(intersect + 0.001f * surfaceNormal,
-        intersect + reflectedVector, levels - 1, true);
+    return diffuse + ks.cwiseProduct(
+      traceRay(intersect + 0.001f * surfaceNormal,
+          intersect + reflectedVector,
+          levels - 1, true).array().pow(shininess).matrix());
 
   default:
     return Eigen::Vector3f(0.0, 0.0, 0.0);
@@ -367,34 +339,16 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
 bool Flyscene::lightBlocked(const Tucano::Face &originFace,
                             Eigen::Vector3f origin, Eigen::Vector3f lightPos) {
-  Eigen::Vector3f intersect;
+  Tucano::Face *closestFace;
+  Eigen::Vector3f *closestIntersect;
+  if (!meshHierarchy.intersect(origin, lightPos, &closestFace, &closestIntersect))
+    return false;
 
-  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+  // a surface cannot cast shadow on itself
+  if ((originFace.vertex_ids[0] == closestFace->vertex_ids[0]) &&
+      (originFace.vertex_ids[1] == closestFace->vertex_ids[1]) &&
+      (originFace.vertex_ids[2] == closestFace->vertex_ids[2]))
+    return false;
 
-  int num_faces = mesh.getNumberOfFaces();
-  for (int i = 0; i < num_faces; ++i) {
-    Tucano::Face face = mesh.getFace(i);
-
-    // a surface cannot cast shadow on itself
-    if ((face.vertex_ids[0] == originFace.vertex_ids[0]) &&
-        (face.vertex_ids[1] == originFace.vertex_ids[1]) &&
-        (face.vertex_ids[2] == originFace.vertex_ids[2]))
-      continue;
-
-    // Assume a triangle
-    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
-
-    // Intersect
-    if (Intersect::triangle(origin, lightPos, vert1.head<3>() / vert1.w(),
-                            vert2.head<3>() / vert2.w(),
-                            vert3.head<3>() / vert3.w(), intersect)) {
-      Eigen::Vector3f rayVector = intersect - origin;
-      if (rayVector.dot(lightPos - origin) > 0.f)
-        return true;
-    }
-  }
-
-  return false;
+  return true;
 }

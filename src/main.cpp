@@ -76,7 +76,8 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action,
 	  auto duration = std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count();
 
 	  std::cout << "It took " << duration << " seconds to raytrace the Scene" << std::endl;
-	  std::cout << "Resulting in the speed of " << (WINDOW_HEIGHT * WINDOW_WIDTH) / duration << "pixels/s " << std::endl;
+    if (duration != 0)
+      std::cout << "Resulting in the speed of " << (WINDOW_HEIGHT * WINDOW_WIDTH) / duration << "pixels/s " << std::endl;
   }
   else if (key == GLFW_KEY_U && action == GLFW_PRESS) {
 	  flyscene->modifyDebugReflection(1);
