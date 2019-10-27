@@ -6,8 +6,8 @@
 
 class MeshHierarchy {
 private:
-  static const int MAX_DEPTH = 10;
-  static const int MIN_TRIANGLES = 50;
+  static const int MAX_DEPTH = 15;
+  static const int MIN_TRIANGLES = 20;
 
   typedef struct BoundingBox {
     int level;

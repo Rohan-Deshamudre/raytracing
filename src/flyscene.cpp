@@ -337,34 +337,16 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
 bool Flyscene::lightBlocked(const Tucano::Face &originFace,
                             Eigen::Vector3f origin, Eigen::Vector3f lightPos) {
-  Eigen::Vector3f intersect;
+  Tucano::Face *closestFace;
+  Eigen::Vector3f *closestIntersect;
+  if (!meshHierarchy.intersect(origin, lightPos, &closestFace, &closestIntersect))
+    return false;
 
-  Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
+  // a surface cannot cast shadow on itself
+  if ((originFace.vertex_ids[0] == closestFace->vertex_ids[0]) &&
+      (originFace.vertex_ids[1] == closestFace->vertex_ids[1]) &&
+      (originFace.vertex_ids[2] == closestFace->vertex_ids[2]))
+    return false;
 
-  int num_faces = mesh.getNumberOfFaces();
-  for (int i = 0; i < num_faces; ++i) {
-    Tucano::Face face = mesh.getFace(i);
-
-    // a surface cannot cast shadow on itself
-    if ((face.vertex_ids[0] == originFace.vertex_ids[0]) &&
-        (face.vertex_ids[1] == originFace.vertex_ids[1]) &&
-        (face.vertex_ids[2] == originFace.vertex_ids[2]))
-      continue;
-
-    // Assume a triangle
-    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
-
-    // Intersect
-    if (Intersect::triangle(origin, lightPos, vert1.head<3>() / vert1.w(),
-                            vert2.head<3>() / vert2.w(),
-                            vert3.head<3>() / vert3.w(), intersect)) {
-      Eigen::Vector3f rayVector = intersect - origin;
-      if (rayVector.dot(lightPos - origin) > 0.f)
-        return true;
-    }
-  }
-
-  return false;
+  return true;
 }
