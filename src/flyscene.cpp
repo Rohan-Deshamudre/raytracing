@@ -30,7 +30,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/torus2.obj");
+                                    "resources/models/chess.obj");
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
   // create mesh hierarchy
@@ -46,7 +46,7 @@ void Flyscene::initialize(int width, int height) {
   lightrep.setSize(0.15);
 
   // create a first ray-tracing light source at some random position
-  lights.push_back(Eigen::Vector3f(-1.0, 1.0, 1.0));
+  lights.push_back(Eigen::Vector3f(0.0, 1.5, 0.0));
 
   // scale the camera representation (frustum) for the ray debug
   camerarep.shapeMatrix()->scale(0.2);

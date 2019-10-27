@@ -1,0 +1,27 @@
+# Blender MTL File: 'chess.blend'
+# Material Count: 7
+
+newmtl Mirror
+Ns 1
+Ka 0.0 0.0 0.0
+Kd 0.208407 0.430443 0.800000
+Ks 0.800000 0.800000 0.800000
+illum 3
+
+newmtl Black
+Ns 200
+Kd 0.000000 0.000000 0.000000
+Ks 0.500000 0.500000 0.500000
+illum 2
+
+newmtl White
+Ns 200
+Kd 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+illum 2
+
+newmtl Dividors
+Ns 10
+Kd 0.114934 0.013416 0.000000
+Ks 0.500000 0.500000 0.500000
+illum 2
