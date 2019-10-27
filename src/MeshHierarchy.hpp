@@ -7,7 +7,7 @@
 class MeshHierarchy {
 private:
   static const int MAX_DEPTH = 10;
-  static const int MIN_TRIANGLES = 5;
+  static const int MIN_TRIANGLES = 50;
 
   typedef struct BoundingBox {
     int level;
@@ -38,16 +38,18 @@ public:
 
     box = new BoundingBox();
     buildUp(box, 0, faces);
-
-    std::cout << box->min << std::endl << box->max << std::endl;
-    std::cout << box->less->min << std::endl << box->less->max << std::endl;
-    std::cout << box->more->min << std::endl << box->more->max << std::endl;
   }
 
   bool intersect(const Eigen::Vector3f &origin,
                  const Eigen::Vector3f &point,
                  Tucano::Face **outFace,
-                 Eigen::Vector3f **outIntersect) {
+                 Eigen::Vector3f **outIntersect)
+  {
+    const Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
+
+    if (!Intersect::box(origin, point, shapeMatrix * this->box->min, shapeMatrix * this->box->max))
+      return false;
+
     return intersectBoundingBox(box, origin, point, outFace, outIntersect);
   }
 
@@ -58,19 +60,10 @@ protected:
   {
     const Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
 
-    if (!Intersect::box(origin, point, shapeMatrix * this->box->min, shapeMatrix * this->box->max))
-      return false;
-
-    if (box->less != nullptr) {
-      if (!Intersect::box(origin, point, shapeMatrix * this->box->less->min, shapeMatrix * this->box->less->max))
-        return false;
-
+    if (box->less != nullptr && Intersect::box(origin, point, shapeMatrix * this->box->less->min, shapeMatrix * this->box->less->max)) {
       return intersectBoundingBox(box->less, origin, point, outFace, outIntersect);
     }
-    if (box->more != nullptr) {
-      if (!Intersect::box(origin, point, shapeMatrix * this->box->more->min, shapeMatrix * this->box->more->max))
-        return false;
-
+    if (box->more != nullptr && Intersect::box(origin, point, shapeMatrix * this->box->more->min, shapeMatrix * this->box->more->max)) {
       return intersectBoundingBox(box->more, origin, point, outFace, outIntersect);
     }
 
@@ -83,6 +76,9 @@ protected:
       Tucano::Face **outFace,
       Eigen::Vector3f **outIntersect)
   {
+    if (faces == nullptr || faces->empty())
+      return false;
+
     const Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
 
     Tucano::Face closestFace;
@@ -170,6 +166,10 @@ protected:
     else if (zspan == span) {
       splitByAxis(faces, mid, Eigen::Vector3f(0.0, 0.0, 1.0), less, more);
     }
+
+    /* // release faces stored for sub-box exists */
+    /* if (!less->empty() || !more->empty()) */
+    /*   delete box->faces; */
 
     // recurse if has geometry
     if (!less->empty()) {
