@@ -120,41 +120,14 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
   Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
   Eigen::Vector3f rayDirection = (to - from).normalized();
 
-  Tucano::Face closestFace;
-  Eigen::Vector3f closestIntersect;
-  float minDist = std::numeric_limits<float>::max();
-
-  Eigen::Vector3f intersect;
-
-  // Loop over all faces
-  int num_faces = mesh.getNumberOfFaces();
-  for (int i = 0; i < num_faces; ++i) {
-    Tucano::Face face = mesh.getFace(i);
-    // Assume a triangle
-    Eigen::Vector4f vert1 = shapeMatrix * mesh.getVertex(face.vertex_ids[0]);
-    Eigen::Vector4f vert2 = shapeMatrix * mesh.getVertex(face.vertex_ids[1]);
-    Eigen::Vector4f vert3 = shapeMatrix * mesh.getVertex(face.vertex_ids[2]);
-
-    // Intersect + set calculate distance
-    if (Intersect::triangle(from, to, vert1.head<3>() / vert1.w(),
-                            vert2.head<3>() / vert2.w(),
-                            vert3.head<3>() / vert3.w(), intersect)) {
-      Eigen::Vector3f distVector = intersect - from;
-      float dist = distVector.norm();
-      if (dist < minDist && distVector.dot(to - from) > 0.f) {
-        minDist = dist;
-        closestFace = face;
-        closestIntersect = intersect;
-      }
-    }
-  }
-
-  if (minDist < std::numeric_limits<float>::max()) {
-    // intersection
+  Tucano::Face *closestFace;
+  Eigen::Vector3f *closestIntersect;
+  if (meshHierarchy.intersect(from, to, &closestFace, &closestIntersect)) {
+    Eigen::Vector3f rayVector = *closestIntersect - from;
+    float minDist = rayVector.norm();
 
     // calculating reflection
-    Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace.normal);
-    float length = 3; // should be minDist
+    Eigen::Vector3f reflectDir = reflect(rayDirection, closestFace->normal);
     Tucano::Shapes::Cylinder ray =
         Tucano::Shapes::Cylinder(0.01, minDist, 16, 64);
 
@@ -162,13 +135,11 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
     ray.setOriginOrientation(from, rayDirection);
     debugRays.push_back(ray);
     if (maxReflections > 1) {
-      traceDebugRay(closestIntersect + reflectDir * 0.001f,
-                    closestIntersect + reflectDir, maxReflections - 1);
-    } else {
-      // should draw most recent ray
+      traceDebugRay(*closestIntersect + reflectDir * 0.001f,
+                    *closestIntersect + reflectDir, maxReflections - 1);
     }
-  } else {
-    // no intersection
+  }
+  else {
     Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.01, 42, 16, 64);
     ray.resetModelMatrix();
     ray.setOriginOrientation(from, rayDirection);
