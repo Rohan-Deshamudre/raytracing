@@ -146,7 +146,7 @@ void Flyscene::initTheBoundingBox(Tucano::Mesh mesh) {
 	Eigen::Vector4f maxLeft;
 	Eigen::Vector4f minRight;
 
-	//Split according the longest axis.
+	////Split according the longest axis.
 	float xDif = maxPoint[0] - minPoint[0];
 	float yDif = maxPoint[1] - minPoint[1];
 	float zDif = maxPoint[2] - minPoint[2];
@@ -192,11 +192,12 @@ void Flyscene::initTheBoundingBox(Tucano::Mesh mesh) {
 
 
 	}
-	//to here we have 2 boxes
+	////to here we have 2 boxes
 
 	int num_faces = mesh.getNumberOfFaces();
 	for (int i = 0; i < num_faces; ++i) {
 		Tucano::Face face = mesh.getFace(i);
+	
 	
 		if (hasVertexInBox(i, minPoint, maxLeft) && hasVertexInBox(i, minRight, maxPoint)) {//in both boxes
 			
@@ -212,20 +213,24 @@ void Flyscene::initTheBoundingBox(Tucano::Mesh mesh) {
 	}
 }
 
-bool Flyscene::hasVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax) {
+bool Flyscene::hasVertexInBox(int triangleIndex, Eigen::Vector4f _boxMin, Eigen::Vector4f _boxMax) {
 	Tucano::Face face = mesh.getFace(triangleIndex);
 	for (int i = 0; i < 3; i++) {
-		if (isVertexInBox(mesh.getVertex[face.vertex_ids.at(i)], _boxMin, _boxMax)) {
+
+		if (isVertexInBox(face.vertex_ids[i] , _boxMin, _boxMax)) {
 			return true;
 		}
 	}
 	return false;
 }
 
-bool Flyscene::isVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax) {
-	return mesh.getVertex(triangleIndex)[0] >= _boxMin[0] && mesh.getVertex(triangleIndex)[0] <= _boxMax[0] &&
-		mesh.getVertex(triangleIndex)[1] >= _boxMin[1] && mesh.getVertex(triangleIndex)[1] <= _boxMax[1] &&
-		mesh.getVertex(triangleIndex)[2] >= _boxMin[2] && mesh.getVertex(triangleIndex)[2] <= _boxMax[2];
+bool Flyscene::isVertexInBox(int vertexID, Eigen::Vector4f _boxMin, Eigen::Vector4f _boxMax) {
+
+	Eigen::Vector4f v = mesh.getShapeModelMatrix() * mesh.getVertex(vertexID);
+
+	return v[0] >= _boxMin[0] && v[0] <= _boxMax[0]&&
+		   v[1] >= _boxMin[1] && v[1] <= _boxMax[1]&&
+		   v[2] >= _boxMin[2] && v[2] <= _boxMax[2];
 }
 
 

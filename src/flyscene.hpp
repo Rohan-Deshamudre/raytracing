@@ -15,6 +15,8 @@
 #include <tucano/utils/imageIO.hpp>
 #include <tucano/utils/mtlIO.hpp>
 #include <tucano/utils/objimporter.hpp>
+#include "../BoundingBox.hpp"
+
 
 class Flyscene {
 
@@ -83,10 +85,10 @@ public:
 
   static bool isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eigen::Vector3f vertice2, Eigen::Vector3f vertice3);
 
-  bool isVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax);
+  bool isVertexInBox(int vertexIndex, Eigen::Vector4f _boxMin, Eigen::Vector4f _boxMax);
   void initTheBoundingBox(Tucano::Mesh mesh);
 
-  bool hasVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax);
+  bool hasVertexInBox(int triangleIndex, Eigen::Vector4f _boxMin, Eigen::Vector4f _boxMax);
 
 
 private:
