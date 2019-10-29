@@ -12,6 +12,9 @@
 #include "MeshHierarchy.hpp"
 
 #define MAX_REFLECTIONS   3
+#define SOFTSHADOW_POINTS 12
+#define SSAA_X 4
+
 
 void Flyscene::modifyDebugReflection(int change) {
 	if (change > 0 || maxDebugReflections > 1) {
@@ -214,7 +217,7 @@ void Flyscene::raytraceScene(int width, int height) {
   vector<vector<Eigen::Vector3f>> pixel_data;
   pixel_data.resize(image_size[1]);
   for (int i = 0; i < image_size[1]; ++i)
-    pixel_data[i].resize(image_size[0]);
+	  pixel_data[i].resize(image_size[0]);
 
   // check number of supported concurrent threads
   unsigned int threads = std::thread::hardware_concurrency();
@@ -232,8 +235,8 @@ void Flyscene::raytraceScene(int width, int height) {
     // split over threads
     std::vector<std::thread> workers(threads);
     for (int i = 0; i < threads; i++) {
-      int x_start = i * (image_size[1] / threads);
-      int x_end = x_start + (image_size[1] / threads);
+      int x_start = i * ((image_size[1]) / threads);
+      int x_end = x_start + ((image_size[1]) / threads);
 
       std::cout << "Starting thread " << i << " of " << threads << std::endl;
       workers[i] =
@@ -246,9 +249,13 @@ void Flyscene::raytraceScene(int width, int height) {
       t.join();
       std::cout << "Thread finished." << std::endl;
     }
-
+	long long noFaces = mesh.getNumberOfFaces();
+	noFaces *= image_size[0] * image_size[1];
 	std::cout << meshHierarchy.getfacesChecked() << " Faces checked" << std::endl;
-	std::cout << mesh.getNumberOfFaces()*height*width << " Faces to check w/o Acc structure" << std::endl;
+	std::cout << noFaces*SOFTSHADOW_POINTS*SSAA_X << " Faces to check w/o Acc structure" << std::endl;
+	std::cout << ((float)meshHierarchy.getfacesChecked())/(noFaces*SOFTSHADOW_POINTS*SSAA_X) * 100 << "% Faces checked" << std::endl;
+
+	meshHierarchy.setfacesChecked(0);
   }
 
   // write the ray tracing result to a PPM image
@@ -262,6 +269,11 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
   // origin of the ray is always the camera center
   Eigen::Vector3f origin = flycamera.getCenter();
   Eigen::Vector3f screen_coords;
+  
+  Eigen::Vector3f temp = flycamera.screenToWorld(Eigen::Vector2f(0, x_start)) - flycamera.screenToWorld(Eigen::Vector2f(1, x_start));
+  //distance between Pixels
+  float unitDistance = temp.norm() / 2;
+
 
   // for every pixel shoot a ray from the origin through the pixel coords
   for (int j = x_start; j < x_end; ++j) {
@@ -269,7 +281,16 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
-      Eigen::Vector3f raw = traceRay(origin, screen_coords, MAX_REFLECTIONS, false);
+	 
+	  //creating 4 random Points in 1 Pixel
+	  std::vector<Eigen::Vector3f> pixelPoints = create_points(unitDistance, SSAA_X, screen_coords, (screen_coords - origin));
+	  Eigen::Vector3f temp;
+	  temp.fill(0);
+	  for (Eigen::Vector3f v : pixelPoints) {
+		  temp += traceRay(origin, v, MAX_REFLECTIONS, false);
+	  }
+	  //screen_coords get 4 unit points around it
+	  Eigen::Vector3f raw = temp / SSAA_X;
 
       // gamma 2 correction
       pixel_data[i][j] = Eigen::Vector3f(sqrt(clamp(raw(0), 0.f, 1.f)),
@@ -339,7 +360,7 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
     // check if in hard shadow
     if (!lightBlocked(face, intersect + 0.001f * surfaceNormal, light)) {
-      float ratio = lightRatio(0.05, 12, light, face, intersect + 0.001f * surfaceNormal);
+      float ratio = lightRatio(0.05, SOFTSHADOW_POINTS, light, face, intersect + 0.001f * surfaceNormal);
       lightColour *= ratio;
 
       Eigen::Vector3f toLight = light - intersect;
