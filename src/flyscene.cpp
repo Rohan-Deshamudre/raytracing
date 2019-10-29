@@ -4,11 +4,17 @@
 #include <algorithm>
 #include <limits>
 #include <thread>
+#include <random>
 
 #include "intersect.hpp"
 #include "helper.hpp"
 
 #include "MeshHierarchy.hpp"
+
+#define MAX_REFLECTIONS   3
+#define SOFTSHADOW_POINTS 12
+#define SSAA_X 4
+
 
 void Flyscene::modifyDebugReflection(int change) {
 	if (change > 0 || maxDebugReflections > 1) {
@@ -30,7 +36,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/chess.obj");
+                                    "resources/models/torus2.obj");
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
   // create mesh hierarchy
@@ -45,8 +51,8 @@ void Flyscene::initialize(int width, int height) {
   lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
   lightrep.setSize(0.15);
 
-  // create a first ray-tracing light source at some random position
-  lights.push_back(Eigen::Vector3f(0.0, 1.5, 0.0));
+  /* // create a first ray-tracing light source at some random position */
+  /* lights.push_back(Eigen::Vector3f(0.0, 1.0, 0.0)); */
 
   // scale the camera representation (frustum) for the ray debug
   camerarep.shapeMatrix()->scale(0.2);
@@ -55,6 +61,36 @@ void Flyscene::initialize(int width, int height) {
   createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 
   glEnable(GL_DEPTH_TEST);
+
+  /********** from now on initialize the GUI sliders, labels, and buttons ************/
+
+  gui.setViewportSize(width, height);
+
+  string assets_path = "resources/assets/";
+
+  menu_button.setPosition(10, 10);
+  menu_button.onClick([&]() {groupbox.toggleDisplay(); });
+  menu_button.setTexture(assets_path + "menu_button.pam");
+  menu_button.setDimensionsFromHeight(30);
+  gui.add(&menu_button);
+
+  groupbox.setPosition(1, 50);
+  groupbox.setDimensions(100, 480);
+  groupbox.setTexture(assets_path + "groupbox_long.pam");
+  gui.add(&groupbox);
+
+  shadow_button.setPosition(10, 60);
+  shadow_button.onClick([&]() {groupbox.toggleDisplay(); });
+  shadow_button.setTexture(assets_path + "shadowmap_button.pam");
+  shadow_button.setDimensionsFromHeight(30);
+  groupbox.add(&shadow_button);
+  
+  reflection_button.setPosition(10, 110);
+  reflection_button.onClick([&]() {groupbox.toggleDisplay(); });
+  reflection_button.setTexture(assets_path + "reload_button.pam");
+  reflection_button.setDimensionsFromHeight(30);
+  groupbox.add(&reflection_button);
+    
 }
 
 void Flyscene::paintGL(void) {
@@ -69,10 +105,13 @@ void Flyscene::paintGL(void) {
 
   // position the scene light at the last ray-tracing light source
   scene_light.resetViewMatrix();
-  scene_light.viewMatrix()->translate(-lights.back());
+  if (!lights.empty())
+    scene_light.viewMatrix()->translate(-lights.back());
 
   // render the scene using OpenGL and one light source
   phong.render(mesh, flycamera, scene_light);
+
+  gui.render();
 
   // render the ray and camera representation for ray debug
   for (std::vector<Tucano::Shapes::Cylinder>::iterator it = debugRays.begin();
@@ -178,7 +217,7 @@ void Flyscene::raytraceScene(int width, int height) {
   vector<vector<Eigen::Vector3f>> pixel_data;
   pixel_data.resize(image_size[1]);
   for (int i = 0; i < image_size[1]; ++i)
-    pixel_data[i].resize(image_size[0]);
+	  pixel_data[i].resize(image_size[0]);
 
   // check number of supported concurrent threads
   unsigned int threads = std::thread::hardware_concurrency();
@@ -196,8 +235,8 @@ void Flyscene::raytraceScene(int width, int height) {
     // split over threads
     std::vector<std::thread> workers(threads);
     for (int i = 0; i < threads; i++) {
-      int x_start = i * (image_size[1] / threads);
-      int x_end = x_start + (image_size[1] / threads);
+      int x_start = i * ((image_size[1]) / threads);
+      int x_end = x_start + ((image_size[1]) / threads);
 
       std::cout << "Starting thread " << i << " of " << threads << std::endl;
       workers[i] =
@@ -210,6 +249,13 @@ void Flyscene::raytraceScene(int width, int height) {
       t.join();
       std::cout << "Thread finished." << std::endl;
     }
+	long long noFaces = mesh.getNumberOfFaces();
+	noFaces *= image_size[0] * image_size[1];
+	std::cout << meshHierarchy.getfacesChecked() << " Faces checked" << std::endl;
+	std::cout << noFaces*SOFTSHADOW_POINTS*SSAA_X << " Faces to check w/o Acc structure" << std::endl;
+	std::cout << ((float)meshHierarchy.getfacesChecked())/(noFaces*SOFTSHADOW_POINTS*SSAA_X) * 100 << "% Faces checked" << std::endl;
+
+	meshHierarchy.setfacesChecked(0);
   }
 
   // write the ray tracing result to a PPM image
@@ -223,6 +269,11 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
   // origin of the ray is always the camera center
   Eigen::Vector3f origin = flycamera.getCenter();
   Eigen::Vector3f screen_coords;
+  
+  Eigen::Vector3f temp = flycamera.screenToWorld(Eigen::Vector2f(0, x_start)) - flycamera.screenToWorld(Eigen::Vector2f(1, x_start));
+  //distance between Pixels
+  float unitDistance = temp.norm() / 2;
+
 
   // for every pixel shoot a ray from the origin through the pixel coords
   for (int j = x_start; j < x_end; ++j) {
@@ -230,7 +281,16 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
-      Eigen::Vector3f raw = traceRay(origin, screen_coords, 20, false);
+	 
+	  //creating 4 random Points in 1 Pixel
+	  std::vector<Eigen::Vector3f> pixelPoints = create_points(unitDistance, SSAA_X, screen_coords, (screen_coords - origin));
+	  Eigen::Vector3f temp;
+	  temp.fill(0);
+	  for (Eigen::Vector3f v : pixelPoints) {
+		  temp += traceRay(origin, v, MAX_REFLECTIONS, false);
+	  }
+	  //screen_coords get 4 unit points around it
+	  Eigen::Vector3f raw = temp / SSAA_X;
 
       // gamma 2 correction
       pixel_data[i][j] = Eigen::Vector3f(sqrt(clamp(raw(0), 0.f, 1.f)),
@@ -278,6 +338,8 @@ Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
       origin, rayDirection, levels, isReflected);
 }
 
+bool button_press = false;
+
 Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     const Eigen::Vector3f& intersect, const Eigen::Vector3f& surfaceNormal,
     const Eigen::Vector3f& origin, const Eigen::Vector3f& rayDirection,
@@ -298,8 +360,11 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
     Eigen::Vector3f rayVector = intersect - origin;
 
-    // check if in shadow
+    // check if in hard shadow
     if (!lightBlocked(face, intersect + 0.001f * surfaceNormal, light)) {
+      float ratio = lightRatio(0.05, SOFTSHADOW_POINTS, light, face, intersect + 0.001f * surfaceNormal);
+      lightColour *= ratio;
+
       Eigen::Vector3f toLight = light - intersect;
       Eigen::Vector3f toLightUnit = toLight.normalized();
       float lightDistance = toLight.norm();
@@ -324,12 +389,12 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     return diffuse;
 
   case 2:
-    return diffuse + specular;
-
+	return diffuse + specular;
+	  
   case 3:
     return diffuse + ks.cwiseProduct(
       traceRay(intersect + 0.001f * surfaceNormal,
-          intersect + reflectedVector,
+          intersect + 0.001f * surfaceNormal + reflectedVector,
           levels - 1, true).array().pow(shininess).matrix());
 
   default:
@@ -351,4 +416,32 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace,
     return false;
 
   return true;
+}
+
+float Flyscene::lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin) {
+	vector<Eigen::Vector3f> points = create_points(radius, times, lightpos, lightpos-origin);
+	float count = times;
+	for (Eigen::Vector3f point : points) {
+		count -= lightBlocked(originFace, origin, point);
+	}
+	return count / times;
+}
+vector<Eigen::Vector3f> Flyscene::create_points(float radius, int times, Eigen::Vector3f pos, Eigen::Vector3f dir) {
+	float a, b;
+	vector<Eigen::Vector3f> ret;
+	Eigen::Vector3f e1 = (dir.unitOrthogonal() + pos).normalized();
+	Eigen::Vector3f e2 = (e1.cross(dir) + pos).normalized();
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<> dis(-radius, radius);
+	for (int i = 0; i < times; i++) {
+		do {
+			a = dis(gen);
+			b = dis(gen);
+		} while (sqrt(pow(a, 2) + pow(b, 2)) < radius);
+
+
+		ret.push_back(pos + a*e1 + b*e2);
+	}
+	return ret;
 }

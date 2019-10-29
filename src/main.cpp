@@ -91,11 +91,20 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action,
 
 static void mouseButtonCallback(GLFWwindow *window, int button, int action,
                                 int mods) {
+	double xpos, ypos;
+	glfwGetCursorPos(window, &xpos, &ypos);
+
   if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
     flyscene->getCamera()->startRotation(Eigen::Vector2f(xpos, ypos));
   }
+
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+  {
+	  if (flyscene->getGUI()->leftButtonPressed(xpos, ypos))
+		  return;
+  }
+  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
+	  flyscene->getGUI()->leftButtonReleased(xpos, ypos);
 }
 
 static void cursorPosCallback(GLFWwindow *window, double xpos, double ypos) {
