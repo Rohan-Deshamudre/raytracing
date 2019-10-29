@@ -80,13 +80,13 @@ void Flyscene::initialize(int width, int height) {
   gui.add(&groupbox);
 
   shadow_button.setPosition(10, 60);
-  shadow_button.onClick([&]() {!button_press; });
+  shadow_button.onClick([&]() {groupbox.toggleDisplay(); });
   shadow_button.setTexture(assets_path + "shadowmap_button.pam");
   shadow_button.setDimensionsFromHeight(30);
   groupbox.add(&shadow_button);
   
   reflection_button.setPosition(10, 110);
-  reflection_button.onClick([&]() {!button_press; });
+  reflection_button.onClick([&]() {groupbox.toggleDisplay(); });
   reflection_button.setTexture(assets_path + "reload_button.pam");
   reflection_button.setDimensionsFromHeight(30);
   groupbox.add(&reflection_button);
@@ -337,6 +337,8 @@ Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
   return calculateShading(*closestFace, *closestIntersect, surfaceNormal,
       origin, rayDirection, levels, isReflected);
 }
+
+bool button_press = false;
 
 Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     const Eigen::Vector3f& intersect, const Eigen::Vector3f& surfaceNormal,
