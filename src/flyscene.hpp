@@ -15,6 +15,8 @@
 #include <tucano/utils/imageIO.hpp>
 #include <tucano/utils/mtlIO.hpp>
 #include <tucano/utils/objimporter.hpp>
+#include "tucano/gui/base.hpp"
+
 
 #include "MeshHierarchy.hpp"
 
@@ -45,6 +47,14 @@ public:
    * @return pointer to flycamera
    **/
   Tucano::Flycamera *getCamera(void) { return &flycamera; }
+
+  /**
+	 * @brief Returns pointer to GUI
+	 * @return pointer to GUI
+	 */
+  Tucano::GUI::Base* getGUI(void) { return &gui; }
+
+
 
   /**
    * @brief Add a new light source
@@ -81,6 +91,8 @@ public:
     const Eigen::Vector3f& origin, const Eigen::Vector3f& rayDirection,
     int levels, bool isReflected);
 
+  
+
   /**
    * @brief trace a single ray from the camera passing through dest
    * @param origin Ray origin
@@ -96,6 +108,8 @@ public:
   static bool planeIntersection(Eigen::Vector3f& origin, Eigen::Vector3f dir, Eigen::Vector3f norm, Eigen::Vector3f point, Eigen::Vector3f& intersect);
 
   static bool isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eigen::Vector3f vertice2, Eigen::Vector3f vertice3);
+
+
 
 
 private:
@@ -139,6 +153,22 @@ private:
   float lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin);
 
   vector<Eigen::Vector3f> create_points(float radius, int times, Eigen::Vector3f pos, Eigen::Vector3f dir);
+
+  /// GUI holder
+  Tucano::GUI::Base gui;
+
+  /// Box to group all gui elements
+  Tucano::GUI::GroupBox groupbox;
+
+  /// Shadow button
+  Tucano::GUI::Button shadow_button;
+
+  /// Menu show/hide button
+  Tucano::GUI::SelectButton menu_button;
+
+  /// Reflection button
+  Tucano::GUI::Button reflection_button;
+     
 };
 
 #endif // FLYSCENE
