@@ -210,6 +210,9 @@ void Flyscene::raytraceScene(int width, int height) {
       t.join();
       std::cout << "Thread finished." << std::endl;
     }
+
+	std::cout << meshHierarchy.getfacesChecked() << " Faces checked" << std::endl;
+	std::cout << mesh.getNumberOfFaces()*height*width << " Faces to check w/o Acc structure" << std::endl;
   }
 
   // write the ray tracing result to a PPM image
