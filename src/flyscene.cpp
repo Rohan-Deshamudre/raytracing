@@ -304,7 +304,7 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
     // check if in hard shadow
     if (!lightBlocked(face, intersect + 0.001f * surfaceNormal, light)) {
-      float ratio = lightRatio(0.018, 24, light, closestFace, closestIntersect + 0.001f * surfaceNormal);
+      float ratio = lightRatio(0.05, 12, light, face, intersect + 0.001f * surfaceNormal);
       lightColour *= ratio;
 
       Eigen::Vector3f toLight = light - intersect;
