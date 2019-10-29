@@ -10,6 +10,8 @@
 
 #include "MeshHierarchy.hpp"
 
+#define MAX_REFLECTIONS   3
+
 void Flyscene::modifyDebugReflection(int change) {
 	if (change > 0 || maxDebugReflections > 1) {
 		maxDebugReflections += change;
@@ -30,7 +32,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/chess.obj");
+                                    "resources/models/torus2.obj");
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
   // create mesh hierarchy
@@ -45,8 +47,8 @@ void Flyscene::initialize(int width, int height) {
   lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
   lightrep.setSize(0.15);
 
-  // create a first ray-tracing light source at some random position
-  lights.push_back(Eigen::Vector3f(0.0, 1.5, 0.0));
+  /* // create a first ray-tracing light source at some random position */
+  /* lights.push_back(Eigen::Vector3f(0.0, 1.0, 0.0)); */
 
   // scale the camera representation (frustum) for the ray debug
   camerarep.shapeMatrix()->scale(0.2);
@@ -69,7 +71,8 @@ void Flyscene::paintGL(void) {
 
   // position the scene light at the last ray-tracing light source
   scene_light.resetViewMatrix();
-  scene_light.viewMatrix()->translate(-lights.back());
+  if (!lights.empty())
+    scene_light.viewMatrix()->translate(-lights.back());
 
   // render the scene using OpenGL and one light source
   phong.render(mesh, flycamera, scene_light);
@@ -230,7 +233,7 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
-      Eigen::Vector3f raw = traceRay(origin, screen_coords, 20, false);
+      Eigen::Vector3f raw = traceRay(origin, screen_coords, MAX_REFLECTIONS, false);
 
       // gamma 2 correction
       pixel_data[i][j] = Eigen::Vector3f(sqrt(clamp(raw(0), 0.f, 1.f)),
@@ -329,7 +332,7 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
   case 3:
     return diffuse + ks.cwiseProduct(
       traceRay(intersect + 0.001f * surfaceNormal,
-          intersect + reflectedVector,
+          intersect + 0.001f * surfaceNormal + reflectedVector,
           levels - 1, true).array().pow(shininess).matrix());
 
   default:
