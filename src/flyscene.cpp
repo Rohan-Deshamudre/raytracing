@@ -58,6 +58,36 @@ void Flyscene::initialize(int width, int height) {
   createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 
   glEnable(GL_DEPTH_TEST);
+
+  /********** from now on initialize the GUI sliders, labels, and buttons ************/
+
+  gui.setViewportSize(width, height);
+
+  string assets_path = "resources/assets/";
+
+  menu_button.setPosition(10, 10);
+  menu_button.onClick([&]() {groupbox.toggleDisplay(); });
+  menu_button.setTexture(assets_path + "menu_button.pam");
+  menu_button.setDimensionsFromHeight(30);
+  gui.add(&menu_button);
+
+  groupbox.setPosition(1, 50);
+  groupbox.setDimensions(100, 480);
+  groupbox.setTexture(assets_path + "groupbox_long.pam");
+  gui.add(&groupbox);
+
+  shadow_button.setPosition(10, 60);
+  shadow_button.onClick([&]() {!button_press; });
+  shadow_button.setTexture(assets_path + "shadowmap_button.pam");
+  shadow_button.setDimensionsFromHeight(30);
+  groupbox.add(&shadow_button);
+  
+  reflection_button.setPosition(10, 110);
+  reflection_button.onClick([&]() {!button_press; });
+  reflection_button.setTexture(assets_path + "reload_button.pam");
+  reflection_button.setDimensionsFromHeight(30);
+  groupbox.add(&reflection_button);
+    
 }
 
 void Flyscene::paintGL(void) {
@@ -77,6 +107,8 @@ void Flyscene::paintGL(void) {
 
   // render the scene using OpenGL and one light source
   phong.render(mesh, flycamera, scene_light);
+
+  gui.render();
 
   // render the ray and camera representation for ray debug
   for (std::vector<Tucano::Shapes::Cylinder>::iterator it = debugRays.begin();
@@ -334,8 +366,8 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     return diffuse;
 
   case 2:
-    return diffuse + specular;
-
+	return diffuse + specular;
+	  
   case 3:
     return diffuse + ks.cwiseProduct(
       traceRay(intersect + 0.001f * surfaceNormal,
