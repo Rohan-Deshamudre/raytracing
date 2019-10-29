@@ -93,6 +93,11 @@ public:
 
   Eigen::Vector3f min(Eigen::Vector3f a, Eigen::Vector3f b);
 
+  static bool planeIntersection(Eigen::Vector3f& origin, Eigen::Vector3f dir, Eigen::Vector3f norm, Eigen::Vector3f point, Eigen::Vector3f& intersect);
+
+  static bool isInTriangle(Eigen::Vector3f point, Eigen::Vector3f vertice1, Eigen::Vector3f vertice2, Eigen::Vector3f vertice3);
+
+
 private:
 
 	int maxDebugReflections;
@@ -131,6 +136,9 @@ private:
 
   bool lightBlocked(const Tucano::Face &originFace, Eigen::Vector3f origin,
                     Eigen::Vector3f lightPos);
+  float lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin);
+
+  vector<Eigen::Vector3f> create_points(float radius, int times, Eigen::Vector3f pos, Eigen::Vector3f dir);
 };
 
 #endif // FLYSCENE

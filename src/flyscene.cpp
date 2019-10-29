@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <limits>
 #include <thread>
+#include <random>
 
 #include "intersect.hpp"
 #include "helper.hpp"
@@ -301,8 +302,11 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
     Eigen::Vector3f rayVector = intersect - origin;
 
-    // check if in shadow
+    // check if in hard shadow
     if (!lightBlocked(face, intersect + 0.001f * surfaceNormal, light)) {
+      float ratio = lightRatio(0.018, 24, light, closestFace, closestIntersect + 0.001f * surfaceNormal);
+      lightColour *= ratio;
+
       Eigen::Vector3f toLight = light - intersect;
       Eigen::Vector3f toLightUnit = toLight.normalized();
       float lightDistance = toLight.norm();
@@ -354,4 +358,32 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace,
     return false;
 
   return true;
+}
+
+float Flyscene::lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin) {
+	vector<Eigen::Vector3f> points = create_points(radius, times, lightpos, lightpos-origin);
+	float count = times;
+	for (Eigen::Vector3f point : points) {
+		count -= lightBlocked(originFace, origin, point);
+	}
+	return count / times;
+}
+vector<Eigen::Vector3f> Flyscene::create_points(float radius, int times, Eigen::Vector3f pos, Eigen::Vector3f dir) {
+	float a, b;
+	vector<Eigen::Vector3f> ret;
+	Eigen::Vector3f e1 = (dir.unitOrthogonal() + pos).normalized();
+	Eigen::Vector3f e2 = (e1.cross(dir) + pos).normalized();
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<> dis(-radius, radius);
+	for (int i = 0; i < times; i++) {
+		do {
+			a = dis(gen);
+			b = dis(gen);
+		} while (sqrt(pow(a, 2) + pow(b, 2)) < radius);
+
+
+		ret.push_back(pos + a*e1 + b*e2);
+	}
+	return ret;
 }
