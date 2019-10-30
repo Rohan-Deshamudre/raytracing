@@ -30,9 +30,11 @@ public:
 
 	void toggleAntiAliasing();
 
-	void setReflections(float amount);
+	void incrementReflections();
+	void decrementReflections();
 
-	void setSmoothing(float amount);
+	void incrementSmoothing();
+	void decrementSmoothing();
 
   Flyscene(void) {}
 
@@ -185,13 +187,22 @@ private:
   Tucano::GUI::SelectButton menu_button;
 
   /// Anti_Aliasing button
-  Tucano::GUI::Button reflection_button;
+  Tucano::GUI::Button aa_button;
 
-  // Reflection slider
-  Tucano::GUI::Slider reflection_slider;
 
-  // Smoothing slider
-  Tucano::GUI::Slider smoothing_slider;
+
+  ///increment smoothing constant
+  Tucano::GUI::Button increment_smoothing;
+
+  ///decrement smoothing constant
+  Tucano::GUI::Button decrement_smoothing;
+
+  ///increment reflection constant
+  Tucano::GUI::Button increment_reflections;
+
+  ///decrement reflection constant
+  Tucano::GUI::Button decrement_reflections;
+
   
 };
 

@@ -82,29 +82,36 @@ void Flyscene::initialize(int width, int height) {
 	shadow_button.setDimensionsFromHeight(30);
 	groupbox.add(&shadow_button);
 
-	reflection_button.setPosition(10, 110);
-	reflection_button.onClick([&]() {toggleAntiAliasing(); });
-	reflection_button.setTexture(assets_path + "reload_button.pam");
-	reflection_button.setDimensionsFromHeight(30);
-	groupbox.add(&reflection_button);
+	aa_button.setPosition(10, 110);
+	aa_button.onClick([&]() {toggleAntiAliasing(); });
+	aa_button.setTexture(assets_path + "reload_button.pam");
+	aa_button.setDimensionsFromHeight(30);
+	groupbox.add(&aa_button);
 
+	increment_reflections.setPosition(10, 160);
+	increment_reflections.onClick([&]() {incrementReflections(); });
+	increment_reflections.setTexture(assets_path + "reload_button.pam");
+	increment_reflections.setDimensionsFromHeight(30);
+	groupbox.add(&increment_reflections);
 
-	reflection_slider.setPosition(10, 160);
-	reflection_slider.setMinMaxValues(1, 5);
-	reflection_slider.setTexture(assets_path + "slider_bar.pam", assets_path + "slider.pam");
-	reflection_slider.moveSlider(MAX_REFLECTIONS);
-	reflection_slider.setDimensions(80,10);
-	reflection_slider.onValueChanged([&](float v) {setReflections(v); });
+	decrement_reflections.setPosition(40, 160);
+	decrement_reflections.onClick([&]() {decrementReflections(); });
+	decrement_reflections.setTexture(assets_path + "reload_button.pam");
+	decrement_reflections.setDimensionsFromHeight(30);
+	groupbox.add(&decrement_reflections);
 
-	gui.add(&reflection_slider);
+	increment_smoothing.setPosition(10, 210);
+	increment_smoothing.onClick([&]() {incrementSmoothing(); });
+	increment_smoothing.setTexture(assets_path + "reload_button.pam");
+	increment_smoothing.setDimensionsFromHeight(30);
+	groupbox.add(&increment_smoothing);
 
-	smoothing_slider.setPosition(10, 260);
-	smoothing_slider.setMinMaxValues(6, 30);
-	smoothing_slider.moveSlider(SOFTSHADOW_POINTS);
-	smoothing_slider.onValueChanged([&](float v) {setSmoothing(v); });
-	smoothing_slider.setDimensions(80,10);
-	smoothing_slider.setTexture(assets_path + "slider_bar.pam", assets_path + "slider.pam");
-	gui.add(&smoothing_slider);
+	decrement_smoothing.setPosition(40, 210);
+	decrement_smoothing.onClick([&]() {decrementSmoothing(); });
+	decrement_smoothing.setTexture(assets_path + "reload_button.pam");
+	decrement_smoothing.setDimensionsFromHeight(30);
+	groupbox.add(&decrement_smoothing);
+
 
 }
 
@@ -448,9 +455,11 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace,
 
 void Flyscene::toggleSoftShadows() {
 	softShadowsEnabled = !softShadowsEnabled;
+	std::cout << softShadowsEnabled << std::endl;
 }
 void Flyscene::toggleAntiAliasing() {
 	SSAA_X == 1 ? 4 : 1;
+	std::cout << SSAA_X << std::endl;
 }
 float Flyscene::lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin) {
 	vector<Eigen::Vector3f> points = create_points(radius, times, lightpos, lightpos-origin);
@@ -479,13 +488,21 @@ vector<Eigen::Vector3f> Flyscene::create_points(float radius, int times, Eigen::
 	}
 	return ret;
 }
-void Flyscene::setReflections(float amount) {
-	MAX_REFLECTIONS = amount;
-	std::cout << amount << std::endl;
+void Flyscene::incrementReflections() {
+	MAX_REFLECTIONS += 1;
+	std::cout << MAX_REFLECTIONS << std::endl;
+}
+void Flyscene::decrementReflections() {
+	MAX_REFLECTIONS -= 1;
+	std::cout << MAX_REFLECTIONS << std::endl;
 }
 
-void Flyscene::setSmoothing(float amount) {
-	SOFTSHADOW_POINTS = amount;
-	std::cout << amount << std::endl;
+void Flyscene::incrementSmoothing() {
+	SOFTSHADOW_POINTS += 1;
+	std::cout << SOFTSHADOW_POINTS << std::endl;
+}
+void Flyscene::decrementSmoothing() {
+	SOFTSHADOW_POINTS -= 1;
+	std::cout << SOFTSHADOW_POINTS << std::endl;
 }
 
