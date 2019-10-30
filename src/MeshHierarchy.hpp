@@ -9,7 +9,7 @@ private:
 	static const int MAX_DEPTH = 12;
 	static const int MIN_TRIANGLES = 20;
 
-	int facesChecked = 0;
+	long long facesChecked = 0;
 
 	typedef struct BoundingBox {
 		int level;
