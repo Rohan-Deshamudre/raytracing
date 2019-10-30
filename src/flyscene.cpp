@@ -32,7 +32,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/torus2.obj");
+		"resources/models/Torus2.obj");
 	// normalize the model (scale to unit cube and center at origin)
 	mesh.normalizeModelMatrix();
 	// create mesh hierarchy
@@ -78,37 +78,37 @@ void Flyscene::initialize(int width, int height) {
 
 	shadow_button.setPosition(10, 60);
 	shadow_button.onClick([&]() {toggleSoftShadows(); });
-	shadow_button.setTexture(assets_path + "shadowmap_button.pam");
+	shadow_button.setTexture(assets_path + "s.pam");
 	shadow_button.setDimensionsFromHeight(30);
 	groupbox.add(&shadow_button);
 
 	aa_button.setPosition(10, 110);
 	aa_button.onClick([&]() {toggleAntiAliasing(); });
-	aa_button.setTexture(assets_path + "reload_button.pam");
+	aa_button.setTexture(assets_path + "aa.pam");
 	aa_button.setDimensionsFromHeight(30);
 	groupbox.add(&aa_button);
 
 	increment_reflections.setPosition(40, 160);
 	increment_reflections.onClick([&]() {incrementReflections(); });
-	increment_reflections.setTexture(assets_path + "reload_button.pam");
+	increment_reflections.setTexture(assets_path + "plus.pam");
 	increment_reflections.setDimensionsFromHeight(30);
 	groupbox.add(&increment_reflections);
 
 	decrement_reflections.setPosition(10, 160);
 	decrement_reflections.onClick([&]() {decrementReflections(); });
-	decrement_reflections.setTexture(assets_path + "reload_button.pam");
+	decrement_reflections.setTexture(assets_path + "minus.pam");
 	decrement_reflections.setDimensionsFromHeight(30);
 	groupbox.add(&decrement_reflections);
 
 	increment_smoothing.setPosition(40, 210);
 	increment_smoothing.onClick([&]() {incrementSmoothing(); });
-	increment_smoothing.setTexture(assets_path + "reload_button.pam");
+	increment_smoothing.setTexture(assets_path + "plus.pam");
 	increment_smoothing.setDimensionsFromHeight(30);
 	groupbox.add(&increment_smoothing);
 
 	decrement_smoothing.setPosition(10, 210);
 	decrement_smoothing.onClick([&]() {decrementSmoothing(); });
-	decrement_smoothing.setTexture(assets_path + "reload_button.pam");
+	decrement_smoothing.setTexture(assets_path + "minus.pam");
 	decrement_smoothing.setDimensionsFromHeight(30);
 	groupbox.add(&decrement_smoothing);
 
@@ -346,6 +346,7 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
 		   }
 
     for (int i = 0; i < height; ++i) {
+
 		++pixelProcessed;
 
       // create a ray from the camera passing through the pixel (i,j)
@@ -433,9 +434,12 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
     // check if in hard 
 	if (softShadowsEnabled) {
-		float ratio = lightRatio(0.02, SOFTSHADOW_POINTS, light, face, intersect + 0.001f * surfaceNormal);
+		float ratio = lightRatio(0.02, SOFTSHADOW_POINTS, light, face, intersect + 0.01*face.normal);
 		lightColour *= ratio;
-
+	}
+	else {
+		lightColour *= !lightBlocked(face, intersect + 0.01 * face.normal, light);
+	}
 		Eigen::Vector3f toLight = light - intersect;
 		Eigen::Vector3f toLightUnit = toLight.normalized();
 		float lightDistance = toLight.norm();
@@ -446,19 +450,6 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 			std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
 		specular += ks.cwiseProduct(lightColour) *
 			pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
-	}
-	else if (lightBlocked(face, intersect + 0.001f * surfaceNormal, light)) {
-		Eigen::Vector3f toLight = light - intersect;
-		Eigen::Vector3f toLightUnit = toLight.normalized();
-		float lightDistance = toLight.norm();
-		Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
-
-		// if no hit on ray back to light -> illuminated
-		diffuse += kd.cwiseProduct(lightColour) *
-			std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
-		specular += ks.cwiseProduct(lightColour) *
-			pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
-	}
   }
 
 	// Compute recursive ray tracing.
@@ -559,6 +550,7 @@ vector<Eigen::Vector3f> Flyscene::create_points(float radius, int times, Eigen::
 	vector<Eigen::Vector3f> ret;
 	Eigen::Vector3f e1 = (dir.unitOrthogonal() + pos).normalized();
 	Eigen::Vector3f e2 = (e1.cross(dir) + pos).normalized();
+
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<> dis(-radius, radius);
