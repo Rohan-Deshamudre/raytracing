@@ -10,7 +10,7 @@
 #include "helper.hpp"
 
 #include "MeshHierarchy.hpp"
-
+#include "KDTree.hpp"
 #define MAX_REFLECTIONS   3
 #define SOFTSHADOW_POINTS 12
 #define SSAA_X 4

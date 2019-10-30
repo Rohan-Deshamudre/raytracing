@@ -19,6 +19,8 @@
 
 
 #include "MeshHierarchy.hpp"
+#include "KDTree.hpp"
+
 
 class Flyscene {
 
