@@ -20,9 +20,20 @@
 
 #include "MeshHierarchy.hpp"
 
+
+
 class Flyscene {
 
 public:
+
+	void toggleSoftShadows();
+
+	void toggleAntiAliasing();
+
+	void setReflections(float amount);
+
+	void setSmoothing(float amount);
+
   Flyscene(void) {}
 
   /**
@@ -115,6 +126,11 @@ public:
 private:
 
 	int maxDebugReflections;
+	bool softShadowsEnabled = true;
+	int SSAA_X = 4;
+	int MAX_REFLECTIONS = 3;
+	int SOFTSHADOW_POINTS = 12;
+
 
   // A simple phong shader for rendering meshes
   Tucano::Effects::PhongMaterial phong;
@@ -134,6 +150,8 @@ private:
 
   // light sources for ray tracing
   vector<Eigen::Vector3f> lights;
+
+
 
   // Scene light represented as a camera
   Tucano::Camera scene_light;
@@ -166,9 +184,15 @@ private:
   /// Menu show/hide button
   Tucano::GUI::SelectButton menu_button;
 
-  /// Reflection button
+  /// Anti_Aliasing button
   Tucano::GUI::Button reflection_button;
-     
+
+  // Reflection slider
+  Tucano::GUI::Slider reflection_slider;
+
+  // Smoothing slider
+  Tucano::GUI::Slider smoothing_slider;
+  
 };
 
 #endif // FLYSCENE

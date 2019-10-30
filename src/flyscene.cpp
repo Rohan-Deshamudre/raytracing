@@ -11,10 +11,6 @@
 
 #include "MeshHierarchy.hpp"
 
-#define MAX_REFLECTIONS   3
-#define SOFTSHADOW_POINTS 12
-#define SSAA_X 4
-
 
 void Flyscene::modifyDebugReflection(int change) {
 	if (change > 0 || maxDebugReflections > 1) {
@@ -24,73 +20,92 @@ void Flyscene::modifyDebugReflection(int change) {
 }
 
 void Flyscene::initialize(int width, int height) {
-  // initiliaze the Phong Shading effect for the Opengl Previewer
-  phong.initialize();
+	// initiliaze the Phong Shading effect for the Opengl Previewer
+	phong.initialize();
 
-  //set Max debug ray reflections
-  maxDebugReflections = 3;
+	//set Max debug ray reflections
+	maxDebugReflections = 3;
 
-  // set the camera's projection matrix
-  flycamera.setPerspectiveMatrix(60.0, width / (float)height, 0.1f, 100.0f);
-  flycamera.setViewport(Eigen::Vector2f((float)width, (float)height));
+	// set the camera's projection matrix
+	flycamera.setPerspectiveMatrix(60.0, width / (float)height, 0.1f, 100.0f);
+	flycamera.setViewport(Eigen::Vector2f((float)width, (float)height));
 
-  // load the OBJ file and materials
-  Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/torus2.obj");
-  // normalize the model (scale to unit cube and center at origin)
-  mesh.normalizeModelMatrix();
-  // create mesh hierarchy
-  this->meshHierarchy = MeshHierarchy(mesh);
+	// load the OBJ file and materials
+	Tucano::MeshImporter::loadObjFile(mesh, materials,
+		"resources/models/torus2.obj");
+	// normalize the model (scale to unit cube and center at origin)
+	mesh.normalizeModelMatrix();
+	// create mesh hierarchy
+	this->meshHierarchy = MeshHierarchy(mesh);
 
-  // pass all the materials to the Phong Shader
-  for (int i = 0; i < materials.size(); ++i)
-    phong.addMaterial(materials[i]);
+	// pass all the materials to the Phong Shader
+	for (int i = 0; i < materials.size(); ++i)
+		phong.addMaterial(materials[i]);
 
-  // set the color and size of the sphere to represent the light sources
-  // same sphere is used for all sources
-  lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
-  lightrep.setSize(0.15);
+	// set the color and size of the sphere to represent the light sources
+	// same sphere is used for all sources
+	lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
+	lightrep.setSize(0.15);
 
-  /* // create a first ray-tracing light source at some random position */
-  /* lights.push_back(Eigen::Vector3f(0.0, 1.0, 0.0)); */
+	/* // create a first ray-tracing light source at some random position */
+	/* lights.push_back(Eigen::Vector3f(0.0, 1.0, 0.0)); */
 
-  // scale the camera representation (frustum) for the ray debug
-  camerarep.shapeMatrix()->scale(0.2);
+	// scale the camera representation (frustum) for the ray debug
+	camerarep.shapeMatrix()->scale(0.2);
 
-  // craete a first debug ray pointing at the center of the screen
-  createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
+	// craete a first debug ray pointing at the center of the screen
+	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 
-  glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 
-  /********** from now on initialize the GUI sliders, labels, and buttons ************/
+	/********** from now on initialize the GUI sliders, labels, and buttons ************/
 
-  gui.setViewportSize(width, height);
+	gui.setViewportSize(width, height);
 
-  string assets_path = "resources/assets/";
+	string assets_path = "resources/assets/";
 
-  menu_button.setPosition(10, 10);
-  menu_button.onClick([&]() {groupbox.toggleDisplay(); });
-  menu_button.setTexture(assets_path + "menu_button.pam");
-  menu_button.setDimensionsFromHeight(30);
-  gui.add(&menu_button);
+	menu_button.setPosition(10, 10);
+	menu_button.onClick([&]() {groupbox.toggleDisplay(); });
+	menu_button.setTexture(assets_path + "menu_button.pam");
+	menu_button.setDimensionsFromHeight(30);
+	gui.add(&menu_button);
 
-  groupbox.setPosition(1, 50);
-  groupbox.setDimensions(100, 480);
-  groupbox.setTexture(assets_path + "groupbox_long.pam");
-  gui.add(&groupbox);
 
-  shadow_button.setPosition(10, 60);
-  shadow_button.onClick([&]() {groupbox.toggleDisplay(); });
-  shadow_button.setTexture(assets_path + "shadowmap_button.pam");
-  shadow_button.setDimensionsFromHeight(30);
-  groupbox.add(&shadow_button);
-  
-  reflection_button.setPosition(10, 110);
-  reflection_button.onClick([&]() {groupbox.toggleDisplay(); });
-  reflection_button.setTexture(assets_path + "reload_button.pam");
-  reflection_button.setDimensionsFromHeight(30);
-  groupbox.add(&reflection_button);
-    
+	groupbox.setPosition(1, 50);
+	groupbox.setDimensions(100, 480);
+	groupbox.setTexture(assets_path + "groupbox_long.pam");
+	gui.add(&groupbox);
+
+	shadow_button.setPosition(10, 60);
+	shadow_button.onClick([&]() {toggleSoftShadows(); });
+	shadow_button.setTexture(assets_path + "shadowmap_button.pam");
+	shadow_button.setDimensionsFromHeight(30);
+	groupbox.add(&shadow_button);
+
+	reflection_button.setPosition(10, 110);
+	reflection_button.onClick([&]() {toggleAntiAliasing(); });
+	reflection_button.setTexture(assets_path + "reload_button.pam");
+	reflection_button.setDimensionsFromHeight(30);
+	groupbox.add(&reflection_button);
+
+
+	reflection_slider.setPosition(10, 160);
+	reflection_slider.setMinMaxValues(1, 5);
+	reflection_slider.setTexture(assets_path + "slider_bar.pam", assets_path + "slider.pam");
+	reflection_slider.moveSlider(MAX_REFLECTIONS);
+	reflection_slider.setDimensions(80,10);
+	reflection_slider.onValueChanged([&](float v) {setReflections(v); });
+
+	gui.add(&reflection_slider);
+
+	smoothing_slider.setPosition(10, 260);
+	smoothing_slider.setMinMaxValues(6, 30);
+	smoothing_slider.moveSlider(SOFTSHADOW_POINTS);
+	smoothing_slider.onValueChanged([&](float v) {setSmoothing(v); });
+	smoothing_slider.setDimensions(80,10);
+	smoothing_slider.setTexture(assets_path + "slider_bar.pam", assets_path + "slider.pam");
+	gui.add(&smoothing_slider);
+
 }
 
 void Flyscene::paintGL(void) {
@@ -149,6 +164,7 @@ void Flyscene::simulate(GLFWwindow *window) {
                   : 0.0);
   float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 0.2 : 0.0) -
              (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 0.2 : 0.0);
+
   flycamera.translate(dx, dy, dz);
 }
 
@@ -360,22 +376,34 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 
     Eigen::Vector3f rayVector = intersect - origin;
 
-    // check if in hard shadow
-    if (!lightBlocked(face, intersect + 0.001f * surfaceNormal, light)) {
-      float ratio = lightRatio(0.05, SOFTSHADOW_POINTS, light, face, intersect + 0.001f * surfaceNormal);
-      lightColour *= ratio;
+    // check if in hard 
+	if (softShadowsEnabled) {
+		float ratio = lightRatio(0.02, SOFTSHADOW_POINTS, light, face, intersect + 0.001f * surfaceNormal);
+		lightColour *= ratio;
 
-      Eigen::Vector3f toLight = light - intersect;
-      Eigen::Vector3f toLightUnit = toLight.normalized();
-      float lightDistance = toLight.norm();
-      Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
+		Eigen::Vector3f toLight = light - intersect;
+		Eigen::Vector3f toLightUnit = toLight.normalized();
+		float lightDistance = toLight.norm();
+		Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
 
-      // if no hit on ray back to light -> illuminated
-      diffuse += kd.cwiseProduct(lightColour) *
-                 std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
-      specular += ks.cwiseProduct(lightColour) *
-                  pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
-    }
+		// if no hit on ray back to light -> illuminated
+		diffuse += kd.cwiseProduct(lightColour) *
+			std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
+		specular += ks.cwiseProduct(lightColour) *
+			pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
+	}
+	else if (lightBlocked(face, intersect + 0.001f * surfaceNormal, light)) {
+		Eigen::Vector3f toLight = light - intersect;
+		Eigen::Vector3f toLightUnit = toLight.normalized();
+		float lightDistance = toLight.norm();
+		Eigen::Vector3f reflectedLight = reflect(-toLightUnit, surfaceNormal);
+
+		// if no hit on ray back to light -> illuminated
+		diffuse += kd.cwiseProduct(lightColour) *
+			std::max(0.f, surfaceNormal.dot(toLightUnit)) / lightDistance;
+		specular += ks.cwiseProduct(lightColour) *
+			pow(max(rayDirection.dot(-reflectedLight), 0.f), shininess);
+	}
   }
 
 	// Compute recursive ray tracing.
@@ -418,6 +446,12 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace,
   return true;
 }
 
+void Flyscene::toggleSoftShadows() {
+	softShadowsEnabled = !softShadowsEnabled;
+}
+void Flyscene::toggleAntiAliasing() {
+	SSAA_X == 1 ? 4 : 1;
+}
 float Flyscene::lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin) {
 	vector<Eigen::Vector3f> points = create_points(radius, times, lightpos, lightpos-origin);
 	float count = times;
@@ -438,10 +472,20 @@ vector<Eigen::Vector3f> Flyscene::create_points(float radius, int times, Eigen::
 		do {
 			a = dis(gen);
 			b = dis(gen);
-		} while (sqrt(pow(a, 2) + pow(b, 2)) < radius);
+		} while (sqrt(pow(a, 2) + pow(b, 2)) < radius && sqrt(pow(a, 2) + pow(b, 2)) > 0.5 * radius);
 
 
 		ret.push_back(pos + a*e1 + b*e2);
 	}
 	return ret;
 }
+void Flyscene::setReflections(float amount) {
+	MAX_REFLECTIONS = amount;
+	std::cout << amount << std::endl;
+}
+
+void Flyscene::setSmoothing(float amount) {
+	SOFTSHADOW_POINTS = amount;
+	std::cout << amount << std::endl;
+}
+
