@@ -86,7 +86,6 @@ xcopy "$(SolutionDir)dependencies\glew\bin\win\x64" "$(OutputPath)" /y /i</Comma
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BoundingBox.cpp" />
     <ClCompile Include="src\flyscene.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>

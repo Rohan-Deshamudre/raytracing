@@ -6,6 +6,8 @@
 #include <vector>
 #include <GLFW/glfw3.h>
 #include "flyscene.hpp"
+#include "Intersect.hpp"
+
 ////////////////
 
 #define NUM_OF_FACES 500
@@ -37,8 +39,8 @@ public:
 		if (faces.size() > NUM_OF_FACES) {
 			
 
-			Eigen::Vector4f maxLeft;
-			Eigen::Vector4f minRight;
+			Eigen::Vector3f maxLeft;
+			Eigen::Vector3f minRight;
 
 
 			completeBoxValues(maxLeft, minRight);
@@ -62,7 +64,7 @@ public:
 		}
 	}
 
-	void completeBoxValues(Eigen::Vector4f maxLeft, Eigen::Vector4f minRight) {
+	void completeBoxValues(Eigen::Vector3f maxLeft, Eigen::Vector3f minRight) {
 	
 		float xDif = maxV[0] - minV[0];
 		float yDif = maxV[1] - minV[1];
@@ -135,7 +137,7 @@ public:
 	}
 	
 
-	bool hasVertexInBox(int triangleIndex, Eigen::Vector4f _boxMin, Eigen::Vector4f _boxMax) {
+	bool hasVertexInBox(int triangleIndex, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax) {
 		Tucano::Face face = mesh->getFace(triangleIndex);
 		for (int i = 0; i < 3; i++) {
 
@@ -146,7 +148,7 @@ public:
 		return false;
 	}
 
-	bool isVertexInBox(int vertexID, Eigen::Vector4f _boxMin, Eigen::Vector4f _boxMax) {
+	bool isVertexInBox(int vertexID, Eigen::Vector3f _boxMin, Eigen::Vector3f _boxMax) {
 
 		Eigen::Vector4f v = mesh->getShapeModelMatrix() * mesh->getVertex(vertexID);
 
@@ -159,20 +161,20 @@ public:
 	std::vector<int> getIntersectedTriangles(const Eigen::Vector3f& origin, const Eigen::Vector3f& direction) {
 		std::vector<int> IntersectedTriangles;
 
-		if (intersectBoundingBox(origin, direction)) {
+		if (Intersect::box(origin, direction, minV, maxV)) {
 			if (faces.size() > 0) {
 				IntersectedTriangles.insert(IntersectedTriangles.end(), faces.begin(), faces.end());
 			}
 
 			if (boxes.size() > 0) {
 				
-				if (boxes[0].intersectBoundingBox(origin, direction)) {
+				if (Intersect::box(origin, direction, boxes[0].minV, boxes[0].maxV)) {
 					std::vector<int> _facesFromBox = boxes[0].getIntersectedTriangles(origin, direction);
 					IntersectedTriangles.insert(IntersectedTriangles.end(), _facesFromBox.begin(), _facesFromBox.end());
 				}
 				
 
-				if (boxes[1].intersectBoundingBox(origin, direction)) {
+				if (Intersect::box(origin, direction, boxes[1].minV, boxes[1].maxV)) {
 					std::vector<int> _facesFromBox = boxes[1].getIntersectedTriangles(origin, direction);
 					IntersectedTriangles.insert(IntersectedTriangles.end(), _facesFromBox.begin(), _facesFromBox.end());
 				}

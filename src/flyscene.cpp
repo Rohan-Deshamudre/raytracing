@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "intersect.hpp"
+#include "BoundingBox.hpp"
 
 float clamp(float v, float min, float max) {
   if (v < min)
