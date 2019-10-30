@@ -455,11 +455,11 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace,
 
 void Flyscene::toggleSoftShadows() {
 	softShadowsEnabled = !softShadowsEnabled;
-	std::cout << softShadowsEnabled << std::endl;
+	std::cout <<"soft shadows enabled: " << (softShadowsEnabled ? "true" : "false") << std::endl;
 }
 void Flyscene::toggleAntiAliasing() {
-	SSAA_X == 1 ? 4 : 1;
-	std::cout << SSAA_X << std::endl;
+	SSAA_X = SSAA_X == 4 ? 1 : 4;
+	std::cout << "anti aliasing on: " << (SSAA_X == 4 ? "true" : "false") << std::endl;
 }
 float Flyscene::lightRatio(float radius, int times, Eigen::Vector3f lightpos, const Tucano::Face& originFace, Eigen::Vector3f origin) {
 	vector<Eigen::Vector3f> points = create_points(radius, times, lightpos, lightpos-origin);
@@ -490,19 +490,19 @@ vector<Eigen::Vector3f> Flyscene::create_points(float radius, int times, Eigen::
 }
 void Flyscene::incrementReflections() {
 	MAX_REFLECTIONS += 1;
-	std::cout << MAX_REFLECTIONS << std::endl;
+	std::cout << "max reflections: " << MAX_REFLECTIONS << std::endl;
 }
 void Flyscene::decrementReflections() {
 	MAX_REFLECTIONS -= 1;
-	std::cout << MAX_REFLECTIONS << std::endl;
+	std::cout << "max reflections: " << MAX_REFLECTIONS << std::endl;
 }
 
 void Flyscene::incrementSmoothing() {
 	SOFTSHADOW_POINTS += 1;
-	std::cout << SOFTSHADOW_POINTS << std::endl;
+	std::cout << "max shadowPoints: " << SOFTSHADOW_POINTS << std::endl;
 }
 void Flyscene::decrementSmoothing() {
 	SOFTSHADOW_POINTS -= 1;
-	std::cout << SOFTSHADOW_POINTS << std::endl;
+	std::cout << "max shadowPoints: " << SOFTSHADOW_POINTS << std::endl;
 }
 
