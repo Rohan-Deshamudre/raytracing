@@ -26,6 +26,7 @@ class Flyscene {
 
 public:
 
+<<<<<<< HEAD
 	void toggleSoftShadows();
 
 	void toggleAntiAliasing();
@@ -37,6 +38,12 @@ public:
 	void decrementSmoothing();
 
   Flyscene(void) {}
+=======
+	float printProgress = 0.f;
+	int pixelProcessed = 0;
+
+Flyscene(void) {}
+>>>>>>> origin/develop
 
   /**
    * @brief Initializes the shader effect
@@ -82,7 +89,7 @@ public:
   void createDebugRay(const Eigen::Vector2f &mouse_pos);
 
   void traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
-                     int maxReflections);
+                     int maxReflections, float refrIndex);
 
   void modifyDebugReflection(int change);
 
@@ -102,7 +109,7 @@ public:
   Eigen::Vector3f calculateShading(const Tucano::Face& face,
     const Eigen::Vector3f& point, const Eigen::Vector3f& surfaceNormal,
     const Eigen::Vector3f& origin, const Eigen::Vector3f& rayDirection,
-    int levels, bool isReflected);
+    int levels, bool isReflected, float refrIndex);
 
   
 
@@ -113,7 +120,7 @@ public:
    * @return a RGB color
    */
   Eigen::Vector3f traceRay(const Eigen::Vector3f &origin,
-      const Eigen::Vector3f &dest, int levels, bool isReflected);
+      const Eigen::Vector3f &dest, int levels, bool isReflected, float refrIndex);
 
 
   Eigen::Vector3f min(Eigen::Vector3f a, Eigen::Vector3f b);

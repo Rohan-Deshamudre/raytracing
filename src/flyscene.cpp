@@ -176,7 +176,7 @@ void Flyscene::simulate(GLFWwindow *window) {
 }
 
 void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
-                             int maxReflections) {
+                             int maxReflections, float refrIndex) {
 
   Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
   Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
@@ -184,7 +184,7 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
 
   Tucano::Face *closestFace;
   Eigen::Vector3f *closestIntersect;
-  if (meshHierarchy.intersect(from, to, &closestFace, &closestIntersect)) {
+  if (meshHierarchy.intersect(from, to, &closestFace, &closestIntersect, true)) {
     Eigen::Vector3f rayVector = *closestIntersect - from;
     float minDist = rayVector.norm();
 
@@ -198,7 +198,43 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
     debugRays.push_back(ray);
     if (maxReflections > 1) {
       traceDebugRay(*closestIntersect + reflectDir * 0.001f,
-                    *closestIntersect + reflectDir, maxReflections - 1);
+                    *closestIntersect + reflectDir, maxReflections - 1, refrIndex);
+
+	  
+	  Eigen::Vector3f light = Eigen::Vector3f(1.f, 1.f, 1.f);
+	  float refrMatIndex = materials[closestFace -> material_id].getOpticalDensity();
+
+	  //std::cout << refrMatIndex << "\n";
+	  /*if (refrMatIndex == refrIndex) {
+		  refrMatIndex = 1.f;
+	  }*/
+	  //Eigen::Vector3f realDir = (origin + rayDirection).normalized();
+
+	  float cosRefr = rayDirection.dot(closestFace -> normal);
+	  Eigen::Vector3f realNorm = closestFace->normal;
+	  if (cosRefr < 0) {
+		  cosRefr = -cosRefr;
+	  }
+	  else {
+		  realNorm = -realNorm;
+		  //float spom = refrMatIndex;
+		  refrMatIndex = 1.f;
+	  }
+
+	  //if(cosRefr > 1.f)   std::cout << "cosRefr is " << cosRefr << "\n";
+
+	  float isRefr = 1.f - pow(refrIndex, 2) * (1.f - pow(cosRefr, 2)) / pow(refrMatIndex, 2);
+
+	  if (isRefr > 0) {
+		  Eigen::Vector3f t = ((refrIndex / refrMatIndex) * (rayDirection + cosRefr * realNorm) - realNorm * sqrt(isRefr)).normalized();
+		  traceDebugRay(*closestIntersect + 0.001f * t, *closestIntersect + t, maxReflections - 1, refrMatIndex);
+	  }
+
+	  /*if (isRefr < 0.f) {
+		  //std::cout << "here\n";
+		  return diffuse + specular + ks.cwiseProduct(traceRay(intersect + 0.001f * surfaceNormal,
+			  intersect + reflectedVector, levels - 1, true, refrIndex));
+	  }*/
     }
   }
   else {
@@ -220,7 +256,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f &mouse_pos) {
 
   // position and orient the cylinder representing the ray
 
-  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, maxDebugReflections);
+  traceDebugRay(flycamera.getCenter(), flycamera.getCenter() + dir, maxDebugReflections, 1.0);
 
   // place the camera representation (frustum) on current camera location,
   camerarep.resetModelMatrix();
@@ -261,7 +297,7 @@ void Flyscene::raytraceScene(int width, int height) {
       int x_start = i * ((image_size[1]) / threads);
       int x_end = x_start + ((image_size[1]) / threads);
 
-      std::cout << "Starting thread " << i << " of " << threads << std::endl;
+      //std::cout << "Starting thread " << i << " of " << threads << std::endl;
       workers[i] =
           std::thread(&Flyscene::raytracePartScene, this, std::ref(pixel_data),
                       image_size[1], image_size[0], x_start, x_end);
@@ -270,13 +306,15 @@ void Flyscene::raytraceScene(int width, int height) {
     // wait for threads to finish
     for (auto &t : workers) {
       t.join();
-      std::cout << "Thread finished." << std::endl;
+      //std::cout << "\nThread finished." << std::endl;
     }
+	printProgress = 0.f;
+	pixelProcessed = 0;
 	long long noFaces = mesh.getNumberOfFaces();
 	noFaces *= image_size[0] * image_size[1];
-	std::cout << meshHierarchy.getfacesChecked() << " Faces checked" << std::endl;
-	std::cout << noFaces*SOFTSHADOW_POINTS*SSAA_X << " Faces to check w/o Acc structure" << std::endl;
-	std::cout << ((float)meshHierarchy.getfacesChecked())/(noFaces*SOFTSHADOW_POINTS*SSAA_X) * 100 << "% Faces checked" << std::endl;
+	std::cout << meshHierarchy.getfacesChecked() << " Faces checked (not including reflections)" << std::endl;
+	std::cout << noFaces*SOFTSHADOW_POINTS*SSAA_X << " Faces to check w/o Acc structure (not including reflections)" << std::endl;
+	std::cout << ((float)meshHierarchy.getfacesChecked())/(noFaces*SOFTSHADOW_POINTS*SSAA_X) * 100 << "% Faces checked in comparison to no Acceleration structure" << std::endl;
 
 	meshHierarchy.setfacesChecked(0);
   }
@@ -300,7 +338,16 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
 
   // for every pixel shoot a ray from the origin through the pixel coords
   for (int j = x_start; j < x_end; ++j) {
+
+	  float progress = (float)pixelProcessed / ((float)(width * height));
+		  if(progress > printProgress) {
+			  printProgress += 0.01;
+			  std::cout << progress*100 << "% raytraced                       \r" << std::flush;
+		   }
+
     for (int i = 0; i < height; ++i) {
+		++pixelProcessed;
+
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
@@ -310,7 +357,7 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
 	  Eigen::Vector3f temp;
 	  temp.fill(0);
 	  for (Eigen::Vector3f v : pixelPoints) {
-		  temp += traceRay(origin, v, MAX_REFLECTIONS, false);
+		  temp += traceRay(origin, v, MAX_REFLECTIONS, false, 1.0);
 	  }
 	  //screen_coords get 4 unit points around it
 	  Eigen::Vector3f raw = temp / SSAA_X;
@@ -323,9 +370,10 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
   }
 }
 
+
 Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
                                    const Eigen::Vector3f &dest,
-                                   int levels, bool isReflected) {
+                                   int levels, bool isReflected, float refrIndex) {
   using namespace Eigen;
 
   const Vector3f background = Vector3f(0.95f, 0.95f, 0.95f);
@@ -340,7 +388,7 @@ Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
 
   Tucano::Face *closestFace;
   Eigen::Vector3f *closestIntersect;
-  if (!meshHierarchy.intersect(origin, dest, &closestFace, &closestIntersect))
+  if (!meshHierarchy.intersect(origin, dest, &closestFace, &closestIntersect, isReflected))
     return isReflected ? Vector3f(0.f, 0.f, 0.f) : background;
 
   // Interpolate normal
@@ -358,7 +406,7 @@ Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
 
   Eigen::Vector3f rayDirection = (dest - origin).normalized();
   return calculateShading(*closestFace, *closestIntersect, surfaceNormal,
-      origin, rayDirection, levels, isReflected);
+      origin, rayDirection, levels, isReflected, refrIndex);
 }
 
 bool button_press = false;
@@ -366,7 +414,7 @@ bool button_press = false;
 Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     const Eigen::Vector3f& intersect, const Eigen::Vector3f& surfaceNormal,
     const Eigen::Vector3f& origin, const Eigen::Vector3f& rayDirection,
-    int levels, bool isReflected)
+    int levels, bool isReflected, float refrIndex)
 {
   // Material properties
   auto material = materials[face.material_id];
@@ -430,7 +478,44 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
     return diffuse + ks.cwiseProduct(
       traceRay(intersect + 0.001f * surfaceNormal,
           intersect + 0.001f * surfaceNormal + reflectedVector,
-          levels - 1, true).array().pow(shininess).matrix());
+          levels - 1, true, refrIndex).array().pow(shininess).matrix());
+
+  case 4:
+	  return diffuse + ks.cwiseProduct(
+		  traceRay(intersect + 0.001f * surfaceNormal,
+			  intersect + 0.001f * surfaceNormal + reflectedVector,
+			  levels - 1, true, refrIndex).array().pow(shininess).matrix());
+
+  case 6: {
+	  Eigen::Vector3f light = Eigen::Vector3f(1.f, 1.f, 1.f);
+	  float refrMatIndex = material.getOpticalDensity();
+
+	  float cosRefr = rayDirection.dot(surfaceNormal.normalized());
+	  Eigen::Vector3f realNorm = surfaceNormal;
+	  if (cosRefr < 0) {
+		  cosRefr = -cosRefr;
+	  }
+	  else {
+		  realNorm = -realNorm;
+		  refrMatIndex = 1.f;
+	  }
+
+
+	  float isRefr = 1.f - pow(refrIndex, 2) * (1.f - pow(cosRefr, 2)) / pow(refrMatIndex, 2);
+
+
+
+	  if (isRefr < 0.f) {
+		  return diffuse + specular + ks.cwiseProduct(traceRay(intersect + 0.001f * surfaceNormal,
+			  intersect + reflectedVector, levels - 1, true, refrIndex));
+	  }
+
+	  Eigen::Vector3f t = ((refrIndex / refrMatIndex) * (rayDirection + cosRefr * realNorm) - realNorm * sqrt(isRefr)).normalized();
+	  
+	  return diffuse + specular + ks.cwiseProduct(traceRay(intersect + 0.001f * surfaceNormal,
+		  intersect + reflectedVector, levels - 1, true, refrIndex)) + (light - ks).cwiseProduct(traceRay(intersect + 0.001f * surfaceNormal,
+			  intersect + t, levels - 1, true, refrMatIndex));
+  }
 
   default:
     return Eigen::Vector3f(0.0, 0.0, 0.0);
@@ -441,7 +526,7 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace,
                             Eigen::Vector3f origin, Eigen::Vector3f lightPos) {
   Tucano::Face *closestFace;
   Eigen::Vector3f *closestIntersect;
-  if (!meshHierarchy.intersect(origin, lightPos, &closestFace, &closestIntersect))
+  if (!meshHierarchy.intersect(origin, lightPos, &closestFace, &closestIntersect, false))
     return false;
 
   // a surface cannot cast shadow on itself
