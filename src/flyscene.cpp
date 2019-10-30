@@ -11,6 +11,9 @@
 
 #include "MeshHierarchy.hpp"
 
+/*#define MAX_REFLECTIONS   5
+#define SOFTSHADOW_POINTS 12
+#define SSAA_X 1*/
 
 void Flyscene::modifyDebugReflection(int change) {
 	if (change > 0 || maxDebugReflections > 1) {
@@ -38,6 +41,7 @@ void Flyscene::initialize(int width, int height) {
 	// create mesh hierarchy
 	this->meshHierarchy = MeshHierarchy(mesh);
 
+
 	// pass all the materials to the Phong Shader
 	for (int i = 0; i < materials.size(); ++i)
 		phong.addMaterial(materials[i]);
@@ -47,8 +51,8 @@ void Flyscene::initialize(int width, int height) {
 	lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
 	lightrep.setSize(0.15);
 
-	/* // create a first ray-tracing light source at some random position */
-	/* lights.push_back(Eigen::Vector3f(0.0, 1.0, 0.0)); */
+  /* // create a first ray-tracing light source at some random position */
+  //lights.push_back(Eigen::Vector3f(-3, 3, 0)); 
 
 	// scale the camera representation (frustum) for the ray debug
 	camerarep.shapeMatrix()->scale(0.2);
@@ -198,6 +202,8 @@ void Flyscene::simulate(GLFWwindow *window) {
 
 void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
                              int maxReflections, float refrIndex) {
+
+	//flycamera.translate(-5, 5, 0);
 
   Eigen::Affine3f shapeMatrix = mesh.getShapeModelMatrix();
   Eigen::MatrixXf normalMatrix = shapeMatrix.linear().inverse().transpose();
@@ -487,16 +493,16 @@ Eigen::Vector3f Flyscene::calculateShading(const Tucano::Face& face,
 	return diffuse + specular;
 	  
   case 3:
-    return diffuse + ks.cwiseProduct(
+    return diffuse + specular + ks.cwiseProduct(
       traceRay(intersect + 0.001f * surfaceNormal,
           intersect + 0.001f * surfaceNormal + reflectedVector,
-          levels - 1, true, refrIndex).array().pow(shininess).matrix());
+          levels - 1, true, refrIndex));
 
   case 4:
-	  return diffuse + ks.cwiseProduct(
+	  return diffuse + specular + ks.cwiseProduct(
 		  traceRay(intersect + 0.001f * surfaceNormal,
 			  intersect + 0.001f * surfaceNormal + reflectedVector,
-			  levels - 1, true, refrIndex).array().pow(shininess).matrix());
+			  levels - 1, true, refrIndex));
 
   case 6: {
 	  Eigen::Vector3f light = Eigen::Vector3f(1.f, 1.f, 1.f);
