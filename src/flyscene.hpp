@@ -206,6 +206,13 @@ private:
   ///decrement reflection constant
   Tucano::GUI::Button decrement_reflections;
 
+  Tucano::GUI::Label smoothing;
+  Tucano::GUI::Label reflections;
+  Tucano::GUI::Label aa;
+  Tucano::GUI::Label shadowing;
+  
+  
+
   
 };
 

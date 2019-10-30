@@ -32,7 +32,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/Torus2.obj");
+		"resources/models/chess.obj");
 	// normalize the model (scale to unit cube and center at origin)
 	mesh.normalizeModelMatrix();
 	// create mesh hierarchy
@@ -72,41 +72,62 @@ void Flyscene::initialize(int width, int height) {
 
 
 	groupbox.setPosition(1, 50);
-	groupbox.setDimensions(100, 210);
+	groupbox.setDimensions(100, 300);
 	groupbox.setTexture(assets_path + "groupbox_long.pam");
 	gui.add(&groupbox);
 
-	shadow_button.setPosition(10, 60);
+	shadowing.setPosition(5, 60);
+	shadowing.setTexture(assets_path + "THS.pam");
+	shadowing.setDimensionsFromHeight(15);
+	groupbox.add(&shadowing);
+
+	shadow_button.setPosition(10, 80);
 	shadow_button.onClick([&]() {toggleSoftShadows(); });
 	shadow_button.setTexture(assets_path + "s.pam");
 	shadow_button.setDimensionsFromHeight(30);
 	groupbox.add(&shadow_button);
 
-	aa_button.setPosition(10, 110);
+	aa.setPosition(5, 120);
+	aa.setTexture(assets_path + "TAA.pam");
+	aa.setDimensionsFromHeight(15);
+	groupbox.add(&aa);
+
+	aa_button.setPosition(10, 140);
 	aa_button.onClick([&]() {toggleAntiAliasing(); });
 	aa_button.setTexture(assets_path + "aa.pam");
 	aa_button.setDimensionsFromHeight(30);
 	groupbox.add(&aa_button);
 
-	increment_reflections.setPosition(40, 160);
+
+	increment_reflections.setPosition(40, 200);
 	increment_reflections.onClick([&]() {incrementReflections(); });
 	increment_reflections.setTexture(assets_path + "plus.pam");
 	increment_reflections.setDimensionsFromHeight(30);
 	groupbox.add(&increment_reflections);
 
-	decrement_reflections.setPosition(10, 160);
+	decrement_reflections.setPosition(10, 200);
 	decrement_reflections.onClick([&]() {decrementReflections(); });
 	decrement_reflections.setTexture(assets_path + "minus.pam");
 	decrement_reflections.setDimensionsFromHeight(30);
 	groupbox.add(&decrement_reflections);
 
-	increment_smoothing.setPosition(40, 210);
+	reflections.setPosition(5, 180);
+	reflections.setTexture(assets_path + "ER.pam");
+	reflections.setDimensionsFromHeight(15);
+	groupbox.add(&reflections);
+
+	smoothing.setPosition(5, 240);
+	smoothing.setTexture(assets_path + "ES.pam");
+	smoothing.setDimensionsFromHeight(15);
+	groupbox.add(&smoothing);
+
+	increment_smoothing.setPosition(40, 260);
 	increment_smoothing.onClick([&]() {incrementSmoothing(); });
 	increment_smoothing.setTexture(assets_path + "plus.pam");
 	increment_smoothing.setDimensionsFromHeight(30);
 	groupbox.add(&increment_smoothing);
 
-	decrement_smoothing.setPosition(10, 210);
+	decrement_smoothing.setPosition(10, 260);
 	decrement_smoothing.onClick([&]() {decrementSmoothing(); });
 	decrement_smoothing.setTexture(assets_path + "minus.pam");
 	decrement_smoothing.setDimensionsFromHeight(30);
