@@ -161,7 +161,7 @@ void Flyscene::traceDebugRay(Eigen::Vector3f from, Eigen::Vector3f to,
 
   Tucano::Face *closestFace;
   Eigen::Vector3f *closestIntersect;
-  if (meshHierarchy.intersect(from, to, &closestFace, &closestIntersect)) {
+  if (meshHierarchy.intersect(from, to, &closestFace, &closestIntersect, true)) {
     Eigen::Vector3f rayVector = *closestIntersect - from;
     float minDist = rayVector.norm();
 
@@ -238,7 +238,7 @@ void Flyscene::raytraceScene(int width, int height) {
       int x_start = i * ((image_size[1]) / threads);
       int x_end = x_start + ((image_size[1]) / threads);
 
-      std::cout << "Starting thread " << i << " of " << threads << std::endl;
+      //std::cout << "Starting thread " << i << " of " << threads << std::endl;
       workers[i] =
           std::thread(&Flyscene::raytracePartScene, this, std::ref(pixel_data),
                       image_size[1], image_size[0], x_start, x_end);
@@ -247,13 +247,15 @@ void Flyscene::raytraceScene(int width, int height) {
     // wait for threads to finish
     for (auto &t : workers) {
       t.join();
-      std::cout << "Thread finished." << std::endl;
+      //std::cout << "\nThread finished." << std::endl;
     }
+	printProgress = 0.f;
+	pixelProcessed = 0;
 	long long noFaces = mesh.getNumberOfFaces();
 	noFaces *= image_size[0] * image_size[1];
-	std::cout << meshHierarchy.getfacesChecked() << " Faces checked" << std::endl;
-	std::cout << noFaces*SOFTSHADOW_POINTS*SSAA_X << " Faces to check w/o Acc structure" << std::endl;
-	std::cout << ((float)meshHierarchy.getfacesChecked())/(noFaces*SOFTSHADOW_POINTS*SSAA_X) * 100 << "% Faces checked" << std::endl;
+	std::cout << meshHierarchy.getfacesChecked() << " Faces checked (not including reflections)" << std::endl;
+	std::cout << noFaces*SOFTSHADOW_POINTS*SSAA_X << " Faces to check w/o Acc structure (not including reflections)" << std::endl;
+	std::cout << ((float)meshHierarchy.getfacesChecked())/(noFaces*SOFTSHADOW_POINTS*SSAA_X) * 100 << "% Faces checked in comparison to no Acceleration structure" << std::endl;
 
 	meshHierarchy.setfacesChecked(0);
   }
@@ -277,7 +279,16 @@ void Flyscene::raytracePartScene(vector<vector<Eigen::Vector3f>> &pixel_data,
 
   // for every pixel shoot a ray from the origin through the pixel coords
   for (int j = x_start; j < x_end; ++j) {
+
+	  float progress = (float)pixelProcessed / ((float)(width * height));
+		  if(progress > printProgress) {
+			  printProgress += 0.01;
+			  std::cout << progress*100 << "% raytraced                       \r" << std::flush;
+		   }
+
     for (int i = 0; i < height; ++i) {
+		++pixelProcessed;
+
       // create a ray from the camera passing through the pixel (i,j)
       screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
       // launch raytracing for the given ray and write result to pixel data
@@ -317,7 +328,7 @@ Eigen::Vector3f Flyscene::traceRay(const Eigen::Vector3f &origin,
 
   Tucano::Face *closestFace;
   Eigen::Vector3f *closestIntersect;
-  if (!meshHierarchy.intersect(origin, dest, &closestFace, &closestIntersect))
+  if (!meshHierarchy.intersect(origin, dest, &closestFace, &closestIntersect, isReflected))
     return isReflected ? Vector3f(0.f, 0.f, 0.f) : background;
 
   // Interpolate normal
@@ -406,7 +417,7 @@ bool Flyscene::lightBlocked(const Tucano::Face &originFace,
                             Eigen::Vector3f origin, Eigen::Vector3f lightPos) {
   Tucano::Face *closestFace;
   Eigen::Vector3f *closestIntersect;
-  if (!meshHierarchy.intersect(origin, lightPos, &closestFace, &closestIntersect))
+  if (!meshHierarchy.intersect(origin, lightPos, &closestFace, &closestIntersect, false))
     return false;
 
   // a surface cannot cast shadow on itself

@@ -23,7 +23,11 @@
 class Flyscene {
 
 public:
-  Flyscene(void) {}
+
+	float printProgress = 0.f;
+	int pixelProcessed = 0;
+
+Flyscene(void) {}
 
   /**
    * @brief Initializes the shader effect

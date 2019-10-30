@@ -63,14 +63,16 @@ public:
 	bool intersect(const Eigen::Vector3f& origin,
 		const Eigen::Vector3f& point,
 		Tucano::Face** outFace,
-		Eigen::Vector3f** outIntersect)
+		Eigen::Vector3f** outIntersect,
+		bool isReflection
+		)
 	{
 		const Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
 
 		if (!Intersect::box(origin, point, shapeMatrix * this->box->min, shapeMatrix * this->box->max))
 			return false;
 
-		return intersectBoundingBox(box, origin, point, outFace, outIntersect);
+		return intersectBoundingBox(box, origin, point, outFace, outIntersect, isReflection);
 	}
 
 	int getfacesChecked() {
@@ -83,25 +85,26 @@ public:
 protected:
 	bool intersectBoundingBox(BoundingBox* box,
 		const Eigen::Vector3f& origin, const Eigen::Vector3f& point,
-		Tucano::Face** outFace, Eigen::Vector3f** outIntersect)
+		Tucano::Face** outFace, Eigen::Vector3f** outIntersect, bool isReflection)
 	{
 		const Eigen::Affine3f shapeMatrix = this->mesh.getShapeMatrix();
 
 		if (box->less != nullptr && Intersect::box(origin, point, shapeMatrix * this->box->less->min, shapeMatrix * this->box->less->max)) {
-			return intersectBoundingBox(box->less, origin, point, outFace, outIntersect);
+			return intersectBoundingBox(box->less, origin, point, outFace, outIntersect, isReflection);
 		}
 		if (box->more != nullptr && Intersect::box(origin, point, shapeMatrix * this->box->more->min, shapeMatrix * this->box->more->max)) {
-			return intersectBoundingBox(box->more, origin, point, outFace, outIntersect);
+			return intersectBoundingBox(box->more, origin, point, outFace, outIntersect, isReflection);
 		}
 
-		return intersectGeometry(this->box->faces, origin, point, outFace, outIntersect);
+		return intersectGeometry(this->box->faces, origin, point, outFace, outIntersect, isReflection);
 	}
 
 	bool intersectGeometry(std::vector<int>* faces,
 		const Eigen::Vector3f& origin,
 		const Eigen::Vector3f& point,
 		Tucano::Face** outFace,
-		Eigen::Vector3f** outIntersect)
+		Eigen::Vector3f** outIntersect,
+		bool isReflection)
 	{
 		if (faces == nullptr || faces->empty())
 			return false;
@@ -112,8 +115,10 @@ protected:
 		Eigen::Vector3f closestIntersect;
 		float minDist = std::numeric_limits<float>::max();
 
-		facesChecked += faces->size();
-
+		if (!isReflection) {
+			facesChecked += faces->size();
+		}
+		
 		// Loop over all faces
 		for (int i : *faces) {
 			Eigen::Vector3f intersect;
