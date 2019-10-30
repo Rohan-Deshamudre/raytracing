@@ -40,6 +40,11 @@ Ke 0.0 0.0 0.0
 Ni 1.000000
 d 1.000000
 illum 3
+#newmtl Material.003
+#illum 3
+#Kd 0.00 0.00 0.80
+#Ks 1.0 1.0 1.0
+#Ns 1
 
 newmtl TileWhite
 Ns 323.999994
@@ -50,6 +55,11 @@ Ke 0.0 0.0 0.0
 Ni 1.000000
 d 1.000000
 illum 3
+#newmtl Material.003
+#illum 3
+#Kd 0.00 0.00 0.80
+#Ks 1.0 1.0 1.0
+#Ns 1
 
 newmtl Wall
 Ns 323.999994
