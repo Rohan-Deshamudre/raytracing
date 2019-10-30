@@ -26,7 +26,6 @@ class Flyscene {
 
 public:
 
-<<<<<<< HEAD
 	void toggleSoftShadows();
 
 	void toggleAntiAliasing();
@@ -38,12 +37,9 @@ public:
 	void decrementSmoothing();
 
   Flyscene(void) {}
-=======
-	float printProgress = 0.f;
-	int pixelProcessed = 0;
 
-Flyscene(void) {}
->>>>>>> origin/develop
+  float printProgress = 0.f;
+  int pixelProcessed = 0;
 
   /**
    * @brief Initializes the shader effect
