@@ -72,7 +72,7 @@ void Flyscene::initialize(int width, int height) {
 
 
 	groupbox.setPosition(1, 50);
-	groupbox.setDimensions(100, 480);
+	groupbox.setDimensions(100, 210);
 	groupbox.setTexture(assets_path + "groupbox_long.pam");
 	gui.add(&groupbox);
 
