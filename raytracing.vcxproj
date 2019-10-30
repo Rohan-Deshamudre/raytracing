@@ -93,6 +93,7 @@ xcopy "$(SolutionDir)dependencies\glew\bin\win\x64" "$(OutputPath)" /y /i</Comma
     <ClInclude Include="src\flyscene.hpp" />
     <ClInclude Include="src\helper.hpp" />
     <ClInclude Include="src\intersect.hpp" />
+    <ClInclude Include="src\KDTree.hpp" />
     <ClInclude Include="src\MeshHierarchy.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
