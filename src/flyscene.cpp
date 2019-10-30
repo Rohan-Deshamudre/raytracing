@@ -88,25 +88,25 @@ void Flyscene::initialize(int width, int height) {
 	aa_button.setDimensionsFromHeight(30);
 	groupbox.add(&aa_button);
 
-	increment_reflections.setPosition(10, 160);
+	increment_reflections.setPosition(40, 160);
 	increment_reflections.onClick([&]() {incrementReflections(); });
 	increment_reflections.setTexture(assets_path + "reload_button.pam");
 	increment_reflections.setDimensionsFromHeight(30);
 	groupbox.add(&increment_reflections);
 
-	decrement_reflections.setPosition(40, 160);
+	decrement_reflections.setPosition(10, 160);
 	decrement_reflections.onClick([&]() {decrementReflections(); });
 	decrement_reflections.setTexture(assets_path + "reload_button.pam");
 	decrement_reflections.setDimensionsFromHeight(30);
 	groupbox.add(&decrement_reflections);
 
-	increment_smoothing.setPosition(10, 210);
+	increment_smoothing.setPosition(40, 210);
 	increment_smoothing.onClick([&]() {incrementSmoothing(); });
 	increment_smoothing.setTexture(assets_path + "reload_button.pam");
 	increment_smoothing.setDimensionsFromHeight(30);
 	groupbox.add(&increment_smoothing);
 
-	decrement_smoothing.setPosition(40, 210);
+	decrement_smoothing.setPosition(10, 210);
 	decrement_smoothing.onClick([&]() {decrementSmoothing(); });
 	decrement_smoothing.setTexture(assets_path + "reload_button.pam");
 	decrement_smoothing.setDimensionsFromHeight(30);
